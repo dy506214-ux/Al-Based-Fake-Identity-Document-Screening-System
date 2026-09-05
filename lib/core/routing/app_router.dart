@@ -14,17 +14,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authControllerProvider);
   
   return GoRouter(
-    initialLocation: '/splash',
+    initialLocation: '/login',
     redirect: (BuildContext context, GoRouterState state) {
       final isAuth = authState.status == AuthStateStatus.authenticated;
       final isSplash = state.uri.toString() == '/splash';
       final isLoggingIn = state.uri.toString() == '/login';
-      final isLoading = authState.status == AuthStateStatus.loading || authState.status == AuthStateStatus.initial;
       
-      if (isLoading && !isSplash) return '/splash';
-      if (isSplash && isLoading) return null;
-      
-      if (!isAuth && !isLoggingIn) return '/login';
+      if (!isAuth && !isLoggingIn && !isSplash) return '/login';
       if (isAuth && (isLoggingIn || isSplash)) return '/dashboard';
       
       return null;

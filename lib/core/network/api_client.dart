@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../security/secure_storage_service.dart';
 import 'api_endpoints.dart';
@@ -15,16 +16,24 @@ class ApiClient {
   ApiClient(this._secureStorage)
       : _dio = Dio(BaseOptions(
           baseUrl: ApiEndpoints.baseUrl,
-          connectTimeout: const Duration(seconds: 15),
-          receiveTimeout: const Duration(seconds: 15),
+          connectTimeout: const Duration(seconds: 30),
+          receiveTimeout: const Duration(seconds: 30),
           headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
           },
         )) {
     _dio.interceptors.add(_authInterceptor());
-    // Add logging in dev mode
-    _dio.interceptors.add(LogInterceptor(responseBody: true, requestBody: true));
+    if (kDebugMode) {
+      // Safe development logging without leaking sensitive payloads
+      _dio.interceptors.add(LogInterceptor(
+        responseBody: false,
+        requestBody: false,
+        requestHeader: false,
+        responseHeader: false,
+        error: true,
+      ));
+    }
   }
 
   Interceptor _authInterceptor() {

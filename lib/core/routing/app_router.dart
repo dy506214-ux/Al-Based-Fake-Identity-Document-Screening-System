@@ -56,6 +56,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             },
           ),
           GoRoute(
+            path: '/screening',
+            builder: (BuildContext context, GoRouterState state) {
+              return const DocumentsScreen();
+            },
+          ),
+          GoRoute(
             path: '/history',
             builder: (BuildContext context, GoRouterState state) {
               return const HistoryScreen();

@@ -1,17 +1,23 @@
 class ApiEndpoints {
-  // Configured to point to the requested Render backend
+  // Production backend URL
   static const String baseUrl = 'https://sih26188-backend.onrender.com';
-  
+
+  // Authentication
   static const String login = '/api/auth/login';
-  static const String profile = '/api/auth/profile';
-  
-  static const String uploadDocument = '/api/screening/document';
-  static const String ocr = '/api/screening/ocr';
-  static const String validate = '/api/screening/validate';
-  static const String tampering = '/api/screening/tampering';
-  static const String faceVerification = '/api/screening/face-verify';
-  static const String riskAssessment = '/api/screening/risk';
-  
-  static const String cases = '/api/cases';
-  static const String caseDetails = '/api/cases/';
+
+  // Document Management & Screening
+  static const String uploadDocument = '/api/documents/upload';
+  static String processDocument(String id) => '/api/documents/$id/process';
+
+  // Review Queue & Decisions
+  static const String reviewPendingQueue = '/api/documents/review/pending';
+  static String reviewDocumentDetail(String id) => '/api/documents/review/$id';
+  static String submitReviewDecision(String id) => '/api/documents/review/$id/decision';
+
+  // Admin & Analytics Dashboard
+  static const String adminStats = '/api/admin/stats';
+  static const String adminDocuments = '/api/admin/documents';
+  static const String adminUsers = '/api/admin/users';
+  static const String adminAuditLogs = '/api/admin/audit-logs';
 }
+

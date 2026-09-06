@@ -9,6 +9,8 @@ class SecureStorageService {
   static const _tokenKey = 'auth_token';
   static const _refreshTokenKey = 'refresh_token';
 
+  static const _themeKey = 'app_theme_mode';
+
   Future<void> saveTokens({required String accessToken, required String refreshToken}) async {
     await _storage.write(key: _tokenKey, value: accessToken);
     await _storage.write(key: _refreshTokenKey, value: refreshToken);
@@ -25,5 +27,13 @@ class SecureStorageService {
   Future<void> clearTokens() async {
     await _storage.delete(key: _tokenKey);
     await _storage.delete(key: _refreshTokenKey);
+  }
+
+  Future<void> saveTheme(String themeName) async {
+    await _storage.write(key: _themeKey, value: themeName);
+  }
+
+  Future<String?> getTheme() async {
+    return await _storage.read(key: _themeKey);
   }
 }

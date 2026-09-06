@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "in.gov.mha.ssb.document_screening"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

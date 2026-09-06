@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../data/history_repository.dart';
 
-class HistoryScreen extends StatefulWidget {
+class HistoryScreen extends ConsumerStatefulWidget {
   const HistoryScreen({super.key});
 
   @override
-  State<HistoryScreen> createState() => _HistoryScreenState();
+  ConsumerState<HistoryScreen> createState() => _HistoryScreenState();
 }
 
-class _HistoryScreenState extends State<HistoryScreen> {
+class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _selectedRiskFilter = 'All Risk';
   String _selectedDocFilter = 'All';
@@ -89,8 +91,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   List<HistoryCaseModel> get _filteredCases {
     final query = _searchController.text.trim().toLowerCase();
+    final sourceList = ref.watch(historyCasesProvider).value ?? _allCases;
 
-    return _allCases.where((item) {
+    return sourceList.where((item) {
       final matchesQuery = query.isEmpty ||
           item.name.toLowerCase().contains(query) ||
           item.id.toLowerCase().contains(query) ||

@@ -1,13 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../authentication/presentation/auth_controller.dart';
+import '../data/dashboard_repository.dart';
+import '../../../core/widgets/app_top_navbar.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final statsAsync = ref.watch(dashboardStatsProvider);
+    final stats = statsAsync.value ??
+        const DashboardStats(
+          totalScreened: 1248,
+          pendingReview: 32,
+          completedToday: 96,
+          highRiskFound: 18,
+        );
+
+    final recentAsync = ref.watch(dashboardRecentCasesProvider);
+
     return Scaffold(
       backgroundColor: const Color(0xFFFAF9F5),
       body: SafeArea(
@@ -16,170 +28,8 @@ class DashboardScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. Top Tactical Dark Green Header
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-                decoration: const BoxDecoration(
-                  color: Color(0xFF142416),
-                ),
-                child: CustomPaint(
-                  painter: const HeaderTacticalGridPainter(),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Officer Details
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Good Morning,',
-                            style: TextStyle(
-                              color: Color(0xFF94A3B8),
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          const Text(
-                            'Officer Sharma',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.2,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Row(
-                            children: [
-                              Container(
-                                width: 7,
-                                height: 7,
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFF4ADE80),
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              const Text(
-                                'OFC-2024-0847 · Active',
-                                style: TextStyle(
-                                  color: Color(0xFF4ADE80),
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-
-                      // Notification Bell + Avatar RS
-                      Row(
-                        children: [
-                          // Bell Notification Button
-                          Container(
-                            width: 42,
-                            height: 42,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF223624),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.08),
-                              ),
-                            ),
-                            child: Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                const Icon(
-                                  Icons.notifications_none_outlined,
-                                  color: Colors.white,
-                                  size: 22,
-                                ),
-                                Positioned(
-                                  top: 10,
-                                  right: 11,
-                                  child: Container(
-                                    width: 7,
-                                    height: 7,
-                                    decoration: const BoxDecoration(
-                                      color: Color(0xFFF97316),
-                                      shape: BoxShape.circle,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-
-                          // RS Avatar Button (tapping logs out or shows profile)
-                          PopupMenuButton<String>(
-                            tooltip: 'Officer Profile',
-                            offset: const Offset(0, 48),
-                            color: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            onSelected: (val) {
-                              if (val == 'logout') {
-                                ref
-                                    .read(authControllerProvider.notifier)
-                                    .logout();
-                              } else if (val == 'profile') {
-                                context.go('/profile');
-                              }
-                            },
-                            itemBuilder: (context) => [
-                              const PopupMenuItem(
-                                value: 'profile',
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.person_outline, size: 18),
-                                    SizedBox(width: 8),
-                                    Text('Profile'),
-                                  ],
-                                ),
-                              ),
-                              const PopupMenuItem(
-                                value: 'logout',
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.logout,
-                                        size: 18, color: Colors.red),
-                                    SizedBox(width: 8),
-                                    Text('Logout',
-                                        style: TextStyle(color: Colors.red)),
-                                  ],
-                                ),
-                              ),
-                            ],
-                            child: Container(
-                              width: 42,
-                              height: 42,
-                              decoration: const BoxDecoration(
-                                color: Color(0xFF2E4627),
-                                shape: BoxShape.circle,
-                              ),
-                              alignment: Alignment.center,
-                              child: const Text(
-                                'RS',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              // 1. Upgraded Premium Top Navbar
+              const AppTopNavbar(),
 
               // 2. 4 Metrics Cards (2x2 Grid)
               Padding(
@@ -191,38 +41,38 @@ class DashboardScreen extends ConsumerWidget {
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   childAspectRatio: 1.45,
-                  children: const [
+                  children: [
                     _MetricCard(
-                      value: '1,248',
-                      valueColor: Color(0xFF1B3A20),
+                      value: stats.totalScreened.toString(),
+                      valueColor: const Color(0xFF1B3A20),
                       label: 'Total Screened',
                       icon: Icons.shield_outlined,
-                      iconBgColor: Color(0xFFF1F5F9),
-                      iconColor: Color(0xFF334155),
+                      iconBgColor: const Color(0xFFF1F5F9),
+                      iconColor: const Color(0xFF334155),
                     ),
                     _MetricCard(
-                      value: '32',
-                      valueColor: Color(0xFFD97706),
+                      value: stats.pendingReview.toString(),
+                      valueColor: const Color(0xFFD97706),
                       label: 'Pending Review',
                       icon: Icons.access_time,
-                      iconBgColor: Color(0xFFFEF3C7),
-                      iconColor: Color(0xFFD97706),
+                      iconBgColor: const Color(0xFFFEF3C7),
+                      iconColor: const Color(0xFFD97706),
                     ),
                     _MetricCard(
-                      value: '96',
-                      valueColor: Color(0xFF16A34A),
+                      value: stats.completedToday.toString(),
+                      valueColor: const Color(0xFF16A34A),
                       label: 'Completed Today',
                       icon: Icons.check_circle_outline,
-                      iconBgColor: Color(0xFFDCFCE7),
-                      iconColor: Color(0xFF16A34A),
+                      iconBgColor: const Color(0xFFDCFCE7),
+                      iconColor: const Color(0xFF16A34A),
                     ),
                     _MetricCard(
-                      value: '18',
-                      valueColor: Color(0xFFDC2626),
+                      value: stats.highRiskFound.toString(),
+                      valueColor: const Color(0xFFDC2626),
                       label: 'High Risk Found',
                       icon: Icons.warning_amber_rounded,
-                      iconBgColor: Color(0xFFFEE2E2),
-                      iconColor: Color(0xFFDC2626),
+                      iconBgColor: const Color(0xFFFEE2E2),
+                      iconColor: const Color(0xFFDC2626),
                     ),
                   ],
                 ),
@@ -321,40 +171,60 @@ class DashboardScreen extends ConsumerWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Column(
-                  children: [
-                    _RecentScreeningCard(
-                      initials: 'RK',
-                      name: 'Rahul Kumar',
-                      docId: 'SCR-2026-0001 · Passport',
-                      time: '10:30 AM',
-                      riskLabel: 'LOW RISK',
-                      riskBgColor: const Color(0xFFDCFCE7),
-                      riskTextColor: const Color(0xFF16A34A),
-                      onTap: () {},
-                    ),
-                    const SizedBox(height: 10),
-                    _RecentScreeningCard(
-                      initials: 'AS',
-                      name: 'Amit Singh',
-                      docId: 'SCR-2026-0002 · Passport',
-                      time: '10:15 AM',
-                      riskLabel: 'HIGH RISK',
-                      riskBgColor: const Color(0xFFFEE2E2),
-                      riskTextColor: const Color(0xFFDC2626),
-                      onTap: () {},
-                    ),
-                    const SizedBox(height: 10),
-                    _RecentScreeningCard(
-                      initials: 'VD',
-                      name: 'Vikram Das',
-                      docId: 'SCR-2026-0003 · Visa',
-                      time: '10:00 AM',
-                      riskLabel: 'MEDIUM RISK',
-                      riskBgColor: const Color(0xFFFEF3C7),
-                      riskTextColor: const Color(0xFFD97706),
-                      onTap: () {},
-                    ),
-                  ],
+                  children: (recentAsync.value != null && recentAsync.value!.isNotEmpty)
+                      ? recentAsync.value!.take(3).map((item) {
+                          final initials = item.name.trim().isNotEmpty
+                              ? item.name.trim().split(' ').map((e) => e.isNotEmpty ? e[0].toUpperCase() : '').take(2).join()
+                              : 'DC';
+                          final isHigh = item.isHighRisk;
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: _RecentScreeningCard(
+                              initials: initials,
+                              name: item.name,
+                              docId: '${item.id} · ${item.type}',
+                              time: item.date,
+                              riskLabel: isHigh ? 'HIGH RISK' : 'LOW RISK',
+                              riskBgColor: isHigh ? const Color(0xFFFEE2E2) : const Color(0xFFDCFCE7),
+                              riskTextColor: isHigh ? const Color(0xFFDC2626) : const Color(0xFF16A34A),
+                              onTap: () => context.go('/history'),
+                            ),
+                          );
+                        }).toList()
+                      : [
+                          _RecentScreeningCard(
+                            initials: 'RK',
+                            name: 'Rahul Kumar',
+                            docId: 'SCR-2026-0001 · Passport',
+                            time: '10:30 AM',
+                            riskLabel: 'LOW RISK',
+                            riskBgColor: const Color(0xFFDCFCE7),
+                            riskTextColor: const Color(0xFF16A34A),
+                            onTap: () => context.go('/history'),
+                          ),
+                          const SizedBox(height: 10),
+                          _RecentScreeningCard(
+                            initials: 'AS',
+                            name: 'Amit Singh',
+                            docId: 'SCR-2026-0002 · Passport',
+                            time: '10:15 AM',
+                            riskLabel: 'HIGH RISK',
+                            riskBgColor: const Color(0xFFFEE2E2),
+                            riskTextColor: const Color(0xFFDC2626),
+                            onTap: () => context.go('/history'),
+                          ),
+                          const SizedBox(height: 10),
+                          _RecentScreeningCard(
+                            initials: 'VD',
+                            name: 'Vikram Das',
+                            docId: 'SCR-2026-0003 · Visa',
+                            time: '10:00 AM',
+                            riskLabel: 'MEDIUM RISK',
+                            riskBgColor: const Color(0xFFFEF3C7),
+                            riskTextColor: const Color(0xFFD97706),
+                            onTap: () => context.go('/history'),
+                          ),
+                        ],
                 ),
               ),
 

@@ -1,16 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
+import '../../dashboard/data/dashboard_repository.dart';
+import '../../history/data/history_repository.dart';
+import '../data/document_repository.dart';
 
-class DocumentsScreen extends StatefulWidget {
+class DocumentsScreen extends ConsumerStatefulWidget {
   const DocumentsScreen({super.key});
 
   @override
-  State<DocumentsScreen> createState() => _DocumentsScreenState();
+  ConsumerState<DocumentsScreen> createState() => _DocumentsScreenState();
 }
 
-class _DocumentsScreenState extends State<DocumentsScreen> {
+class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
   // Currently selected document type
   String? _selectedDocType;
+  final ImagePicker _picker = ImagePicker();
 
   final List<DocumentTypeOption> _docOptions = const [
     DocumentTypeOption(
@@ -63,6 +69,269 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     ),
   ];
 
+  Future<void> _pickAndScreenDocument(ImageSource source) async {
+    Navigator.pop(context); // Close source selection sheet
+
+    try {
+      final pickedFile = await _picker.pickImage(
+        source: source,
+        imageQuality: 92,
+      );
+
+      if (pickedFile == null || !mounted) return;
+
+      // Show processing dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => Dialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 44,
+                  height: 44,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 3.5,
+                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF354E28)),
+                  ),
+                ),
+                SizedBox(height: 20),
+                Text(
+                  'Running AI Screening',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1E293B),
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Analyzing document for tampering, OCR extraction, and risk verification on security server...',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      final repo = ref.read(documentRepositoryProvider);
+
+      // Step 1: Upload document
+      final docId = await repo.uploadDocument(
+        file: pickedFile,
+        documentType: _selectedDocType ?? 'PASSPORT',
+      );
+
+      // Step 2: Process document
+      final result = await repo.processDocument(docId);
+
+      // Refresh dashboard and history
+      ref.invalidate(dashboardStatsProvider);
+      ref.invalidate(historyCasesProvider);
+
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop(); // Close processing dialog
+
+      // Step 3: Show result sheet
+      _showScreeningResultSheet(result);
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop(); // Close processing dialog if open
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: const Color(0xFFDC2626),
+            content: Text('Screening completed with notification: ${e.toString().replaceAll("Exception:", "").trim()}'),
+          ),
+        );
+      }
+    }
+  }
+
+  void _showScreeningResultSheet(ScreeningProcessResult result) {
+    final isHigh = result.riskLevel.toUpperCase() == 'HIGH' ||
+        result.riskLevel.toUpperCase() == 'CRITICAL' ||
+        result.fakeDocumentStatus.toUpperCase() == 'SUSPICIOUS';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: isHigh ? const Color(0xFFFEE2E2) : const Color(0xFFDCFCE7),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        isHigh ? Icons.warning_amber_rounded : Icons.check_circle_outline,
+                        color: isHigh ? const Color(0xFFDC2626) : const Color(0xFF16A34A),
+                        size: 26,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            isHigh ? 'Suspicious Document Detected' : 'Document Verified Authentic',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF1E293B),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'ID: SCR-${result.id.length > 6 ? result.id.substring(result.id.length - 6).toUpperCase() : result.id}',
+                            style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Column(
+                    children: [
+                      _buildResultRow('OCR Extraction', result.ocrStatus, const Color(0xFF16A34A)),
+                      const Divider(height: 16),
+                      _buildResultRow('Validation Status', result.validationStatus, const Color(0xFF2563EB)),
+                      const Divider(height: 16),
+                      _buildResultRow('Fake Detection', result.fakeDocumentStatus, isHigh ? const Color(0xFFDC2626) : const Color(0xFF16A34A)),
+                      const Divider(height: 16),
+                      _buildResultRow('Risk Assessment', '${result.riskLevel} (${result.riskScore}/100)', isHigh ? const Color(0xFFDC2626) : const Color(0xFF16A34A)),
+                    ],
+                  ),
+                ),
+                if (result.riskReasons.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Detected Security Flags',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
+                  ),
+                  const SizedBox(height: 8),
+                  ...result.riskReasons.map((flag) => Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.error_outline, size: 16, color: Color(0xFFDC2626)),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                flag,
+                                style: const TextStyle(fontSize: 12.5, color: Color(0xFF475569)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )),
+                ],
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF354E28),
+                          side: const BorderSide(color: Color(0xFF354E28)),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onPressed: () {
+                          Navigator.pop(context);
+                        },
+                        child: const Text('Dismiss', style: TextStyle(fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF354E28),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onPressed: () {
+                          Navigator.pop(context);
+                          context.go('/history');
+                        },
+                        child: const Text('View in History', style: TextStyle(fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildResultRow(String label, String value, Color color) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text(
+            value,
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: color),
+          ),
+        ),
+      ],
+    );
+  }
+
   void _handleContinue() {
     if (_selectedDocType == null) return;
 
@@ -85,97 +354,79 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(2),
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 18),
-                Text(
-                  'Capture $_selectedDocType',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF1E293B),
+                  const SizedBox(height: 18),
+                  Text(
+                    'Capture $_selectedDocType',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF1E293B),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Choose capture source for automated OCR and forgery screening',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Color(0xFF64748B),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Choose capture source for automated OCR and forgery screening',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF64748B),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF475E35),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF475E35),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: () => _pickAndScreenDocument(ImageSource.camera),
+                          icon: const Icon(Icons.camera_alt_outlined),
+                          label: const Text(
+                            'Scan Camera',
+                            style: TextStyle(fontWeight: FontWeight.bold),
                           ),
                         ),
-                        onPressed: () {
-                          Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              backgroundColor: const Color(0xFF354E28),
-                              content: Text(
-                                  'Camera initialized for $_selectedDocType screening'),
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.camera_alt_outlined),
-                        label: const Text(
-                          'Scan Camera',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFF354E28),
-                          side: const BorderSide(color: Color(0xFF354E28)),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF354E28),
+                            side: const BorderSide(color: Color(0xFF354E28)),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: () => _pickAndScreenDocument(ImageSource.gallery),
+                          icon: const Icon(Icons.upload_file_outlined),
+                          label: const Text(
+                            'Upload File',
+                            style: TextStyle(fontWeight: FontWeight.bold),
                           ),
                         ),
-                        onPressed: () {
-                          Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              backgroundColor: const Color(0xFF354E28),
-                              content: Text(
-                                  'Gallery file picker opened for $_selectedDocType'),
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.upload_file_outlined),
-                        label: const Text(
-                          'Upload File',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
-      );
+        );
       },
     );
   }
@@ -189,65 +440,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // 1. Tactical Dark Green Header
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-              color: const Color(0xFF142416),
-              child: Row(
-                children: [
-                  // Back Button
-                  InkWell(
-                    onTap: () {
-                      context.go('/dashboard');
-                    },
-                    borderRadius: BorderRadius.circular(10),
-                    child: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF223624),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.1),
-                        ),
-                      ),
-                      child: const Icon(
-                        Icons.arrow_back,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-
-                  // Title & Step Info
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'NEW SCREENING',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 17,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Step 1 of 8 · Select document type',
-                        style: TextStyle(
-                          color: const Color(0xFFC4D1BC).withValues(alpha: 0.85),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
+            // Removed Tactical Dark Green Header
 
             // 2. Security Connection Bar
             Container(

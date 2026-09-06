@@ -25,10 +25,18 @@ class AppBottomNavbar extends ConsumerWidget {
       currentIndex = 4;
     }
 
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isExtraSmall = screenWidth < 360;
+
     return SafeArea(
       top: false,
       child: Container(
-        margin: const EdgeInsets.fromLTRB(14, 0, 14, 6),
+        margin: EdgeInsets.fromLTRB(
+          isExtraSmall ? 8 : 14,
+          0,
+          isExtraSmall ? 8 : 14,
+          6,
+        ),
         height: 76,
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -62,6 +70,7 @@ class AppBottomNavbar extends ConsumerWidget {
                           label: 'Dashboard',
                           isSelected: currentIndex == 0,
                           theme: currentTheme,
+                          isExtraSmall: isExtraSmall,
                           onTap: () => context.go('/dashboard'),
                         ),
                       ),
@@ -74,6 +83,7 @@ class AppBottomNavbar extends ConsumerWidget {
                           label: 'Documents',
                           isSelected: currentIndex == 1,
                           theme: currentTheme,
+                          isExtraSmall: isExtraSmall,
                           onTap: () => context.go('/documents'),
                         ),
                       ),
@@ -83,6 +93,7 @@ class AppBottomNavbar extends ConsumerWidget {
                         child: _ScreeningActionButton(
                           theme: currentTheme,
                           isSelected: currentIndex == 2,
+                          isExtraSmall: isExtraSmall,
                           onTap: () => context.go('/screening'),
                         ),
                       ),
@@ -95,6 +106,7 @@ class AppBottomNavbar extends ConsumerWidget {
                           label: 'History',
                           isSelected: currentIndex == 3,
                           theme: currentTheme,
+                          isExtraSmall: isExtraSmall,
                           onTap: () => context.go('/history'),
                         ),
                       ),
@@ -107,6 +119,7 @@ class AppBottomNavbar extends ConsumerWidget {
                           label: 'Profile',
                           isSelected: currentIndex == 4,
                           theme: currentTheme,
+                          isExtraSmall: isExtraSmall,
                           onTap: () => context.go('/profile'),
                         ),
                       ),
@@ -127,6 +140,7 @@ class AppBottomNavbar extends ConsumerWidget {
     required String label,
     required bool isSelected,
     required AppThemeMode theme,
+    required bool isExtraSmall,
     required VoidCallback onTap,
   }) {
     return Semantics(
@@ -147,13 +161,13 @@ class AppBottomNavbar extends ConsumerWidget {
                 // Squircle glass container for icon
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
-                  width: 36,
-                  height: 36,
+                  width: isExtraSmall ? 32 : 36,
+                  height: isExtraSmall ? 32 : 36,
                   decoration: BoxDecoration(
                     color: isSelected
                         ? theme.accentColor.withValues(alpha: 0.22)
                         : Colors.white.withValues(alpha: 0.04),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(isExtraSmall ? 10 : 12),
                     border: Border.all(
                       color: isSelected
                           ? theme.accentColor.withValues(alpha: 0.75)
@@ -172,7 +186,7 @@ class AppBottomNavbar extends ConsumerWidget {
                   child: Center(
                     child: Icon(
                       icon,
-                      size: 20,
+                      size: isExtraSmall ? 18 : 20,
                       color: isSelected
                           ? theme.accentColor
                           : Colors.white.withValues(alpha: 0.72),
@@ -182,8 +196,10 @@ class AppBottomNavbar extends ConsumerWidget {
                 const SizedBox(height: 3),
                 Text(
                   label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 10.5,
+                    fontSize: isExtraSmall ? 9.5 : 10.5,
                     fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                     color: isSelected
                         ? theme.accentColor
@@ -195,7 +211,7 @@ class AppBottomNavbar extends ConsumerWidget {
                 // Glowing active indicator bar
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
-                  width: isSelected ? 20 : 0,
+                  width: isSelected ? (isExtraSmall ? 16 : 20) : 0,
                   height: 2.5,
                   decoration: BoxDecoration(
                     color: isSelected ? theme.accentColor : Colors.transparent,
@@ -223,11 +239,13 @@ class AppBottomNavbar extends ConsumerWidget {
 class _ScreeningActionButton extends StatefulWidget {
   final AppThemeMode theme;
   final bool isSelected;
+  final bool isExtraSmall;
   final VoidCallback onTap;
 
   const _ScreeningActionButton({
     required this.theme,
     required this.isSelected,
+    required this.isExtraSmall,
     required this.onTap,
   });
 
@@ -240,6 +258,10 @@ class _ScreeningActionButtonState extends State<_ScreeningActionButton> {
 
   @override
   Widget build(BuildContext context) {
+    final btnSize = widget.isExtraSmall ? 44.0 : 48.0;
+    final iconSize = widget.isExtraSmall ? 24.0 : 28.0;
+    final ringSize = widget.isExtraSmall ? 36.0 : 40.0;
+
     return Semantics(
       label: 'Screening',
       button: true,
@@ -261,8 +283,8 @@ class _ScreeningActionButtonState extends State<_ScreeningActionButton> {
                 duration: const Duration(milliseconds: 140),
                 curve: Curves.easeOutCubic,
                 child: Container(
-                  width: 48,
-                  height: 48,
+                  width: btnSize,
+                  height: btnSize,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: widget.theme.primaryColor,
@@ -283,8 +305,8 @@ class _ScreeningActionButtonState extends State<_ScreeningActionButton> {
                     children: [
                       // Inner highlight ring
                       Container(
-                        width: 40,
-                        height: 40,
+                        width: ringSize,
+                        height: ringSize,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           border: Border.all(
@@ -293,10 +315,10 @@ class _ScreeningActionButtonState extends State<_ScreeningActionButton> {
                           ),
                         ),
                       ),
-                      const Icon(
+                      Icon(
                         Icons.add_rounded,
                         color: Colors.white,
-                        size: 28,
+                        size: iconSize,
                       ),
                     ],
                   ),
@@ -305,8 +327,10 @@ class _ScreeningActionButtonState extends State<_ScreeningActionButton> {
               const SizedBox(height: 3),
               Text(
                 'Screening',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 10.5,
+                  fontSize: widget.isExtraSmall ? 9.5 : 10.5,
                   fontWeight: FontWeight.w700,
                   color: widget.isSelected
                       ? widget.theme.accentColor

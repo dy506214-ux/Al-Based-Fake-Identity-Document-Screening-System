@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/theme/app_theme_controller.dart';
+import '../../../core/theme/app_theme_mode.dart';
+import '../../../core/widgets/app_pull_to_refresh.dart';
 import '../data/history_repository.dart';
 
 class HistoryScreen extends ConsumerStatefulWidget {
@@ -113,6 +116,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   }
 
   void _showCaseDetails(HistoryCaseModel item) {
+    final theme = ref.read(appThemeProvider);
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -181,10 +185,10 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                     color: Color(0xFF64748B),
                   ),
                 ),
-                const Divider(height: 28),
-                _detailRow('Timestamp', item.dateTime),
+                const Divider(height: 32),
+                _detailRow('Date & Time', item.dateTime),
                 const SizedBox(height: 8),
-                _detailRow('AI Authenticity Confidence', item.confidence),
+                _detailRow('Confidence Score', item.confidence),
                 const SizedBox(height: 8),
                 _detailRow('Screening Status', item.status),
                 const SizedBox(height: 8),
@@ -195,7 +199,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                   height: 46,
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF354E28),
+                      backgroundColor: theme.primaryColor,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
@@ -243,48 +247,51 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   @override
   Widget build(BuildContext context) {
     final filtered = _filteredCases;
+    final theme = ref.watch(appThemeProvider);
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAF9F5),
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 1. Tactical Dark Green Header
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-              color: const Color(0xFF142416),
-              child: Row(
-                children: [
-                  // Back Button
-                  InkWell(
-                    onTap: () {
-                      context.go('/dashboard');
-                    },
-                    borderRadius: BorderRadius.circular(10),
-                    child: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF223624),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.1),
-                        ),
-                      ),
-                      child: const Icon(
-                        Icons.arrow_back,
-                        color: Colors.white,
-                        size: 20,
+    return Container(
+      color: const Color(0xFFFAF9F5),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 1. Tactical Dark Header with Theme Colors
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+            color: theme.headerBackground,
+            child: Row(
+              children: [
+                // Back Button
+                InkWell(
+                  onTap: () {
+                    context.go('/dashboard');
+                  },
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: theme.primaryColor.withValues(alpha: 0.35),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.1),
                       ),
                     ),
+                    child: const Icon(
+                      Icons.arrow_back,
+                      color: Colors.white,
+                      size: 20,
+                    ),
                   ),
-                  const SizedBox(width: 14),
+                ),
+                const SizedBox(width: 14),
 
-                  // Title
-                  const Text(
+                // Title
+                const Expanded(
+                  child: Text(
                     'SCREENING HISTORY',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 18,
@@ -292,67 +299,68 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                       letterSpacing: 0.5,
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
+          ),
 
-            // 2. Search & Filter Bar Container
-            Container(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-              color: Colors.white,
-              child: Column(
-                children: [
-                  // Search TextField
-                  Container(
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFAF9F5),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                    ),
-                    child: TextField(
-                      controller: _searchController,
-                      onChanged: (_) => setState(() {}),
-                      style: const TextStyle(fontSize: 13.5),
-                      decoration: const InputDecoration(
-                        hintText: 'Search by name, ID, or document...',
-                        hintStyle: TextStyle(
-                          fontSize: 13.5,
-                          color: Color(0xFF94A3B8),
-                        ),
-                        prefixIcon: Icon(
-                          Icons.search,
-                          size: 20,
-                          color: Color(0xFF94A3B8),
-                        ),
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(vertical: 11),
+          // 2. Search & Filter Bar Container
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+            color: Colors.white,
+            child: Column(
+              children: [
+                // Search TextField
+                Container(
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFAF9F5),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: (_) => setState(() {}),
+                    style: const TextStyle(fontSize: 13.5),
+                    decoration: const InputDecoration(
+                      hintText: 'Search by name, ID, or document...',
+                      hintStyle: TextStyle(
+                        fontSize: 13.5,
+                        color: Color(0xFF94A3B8),
                       ),
+                      prefixIcon: Icon(
+                        Icons.search,
+                        size: 20,
+                        color: Color(0xFF94A3B8),
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(vertical: 11),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                ),
+                const SizedBox(height: 12),
 
-                  // Risk Filter Chips (Horizontal Scroll)
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    physics: const BouncingScrollPhysics(),
-                    child: Row(
-                      children: [
-                        _buildFilterChip('All Risk'),
-                        const SizedBox(width: 8),
-                        _buildFilterChip('Low Risk'),
-                        const SizedBox(width: 8),
-                        _buildFilterChip('Medium Risk'),
-                        const SizedBox(width: 8),
-                        _buildFilterChip('High Risk'),
-                        const SizedBox(width: 8),
-                        _buildMoreFilterButton(),
-                      ],
-                    ),
+                // Risk Filter Chips (Horizontal Scroll)
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  child: Row(
+                    children: [
+                      _buildFilterChip('All Risk', theme),
+                      const SizedBox(width: 8),
+                      _buildFilterChip('Low Risk', theme),
+                      const SizedBox(width: 8),
+                      _buildFilterChip('Medium Risk', theme),
+                      const SizedBox(width: 8),
+                      _buildFilterChip('High Risk', theme),
+                      const SizedBox(width: 8),
+                      _buildMoreFilterButton(theme),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
+          ),
 
             // Subtle divider line
             Container(height: 1, color: const Color(0xFFE2E8F0)),
@@ -372,50 +380,70 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
 
             // 4. Case Cards List
             Expanded(
-              child: filtered.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.search_off_outlined,
-                            size: 48,
-                            color: Colors.grey.shade400,
+              child: AppPullToRefresh(
+                onRefresh: () async {
+                  ref.invalidate(historyCasesProvider);
+                  await ref.read(historyCasesProvider.future);
+                },
+                child: filtered.isEmpty
+                    ? LayoutBuilder(
+                        builder: (context, constraints) =>
+                            SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(
+                            parent: BouncingScrollPhysics(),
                           ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'No cases match your filters',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey.shade600,
-                              fontWeight: FontWeight.w500,
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              minHeight: constraints.maxHeight,
+                            ),
+                            child: Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.search_off_outlined,
+                                    size: 48,
+                                    color: Colors.grey.shade400,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    'No cases match your filters',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey.shade600,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                        ],
+                        ),
+                      )
+                    : ListView.separated(
+                        physics: const AlwaysScrollableScrollPhysics(
+                          parent: BouncingScrollPhysics(),
+                        ),
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                        itemCount: filtered.length,
+                        separatorBuilder: (context, index) =>
+                            const SizedBox(height: 12),
+                        itemBuilder: (context, index) {
+                          final item = filtered[index];
+                          return _HistoryCaseCard(
+                            item: item,
+                            onTap: () => _showCaseDetails(item),
+                          );
+                        },
                       ),
-                    )
-                  : ListView.separated(
-                      physics: const BouncingScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-                      itemCount: filtered.length,
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(height: 12),
-                      itemBuilder: (context, index) {
-                        final item = filtered[index];
-                        return _HistoryCaseCard(
-                          item: item,
-                          onTap: () => _showCaseDetails(item),
-                        );
-                      },
-                    ),
+              ),
             ),
           ],
         ),
-      ),
-    );
-  }
+      );
+    }
 
-  Widget _buildFilterChip(String label) {
+  Widget _buildFilterChip(String label, AppThemeMode theme) {
     final isSelected = _selectedRiskFilter == label;
 
     return InkWell(
@@ -429,10 +457,10 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF364F28) : Colors.white,
+          color: isSelected ? theme.primaryColor : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected ? const Color(0xFF364F28) : const Color(0xFFE2E8F0),
+            color: isSelected ? theme.primaryColor : const Color(0xFFE2E8F0),
           ),
         ),
         child: Text(
@@ -447,7 +475,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     );
   }
 
-  Widget _buildMoreFilterButton() {
+  Widget _buildMoreFilterButton(AppThemeMode theme) {
     final hasDocFilter = _selectedDocFilter != 'All';
 
     return InkWell(
@@ -457,10 +485,10 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color: hasDocFilter ? const Color(0xFF364F28) : Colors.white,
+          color: hasDocFilter ? theme.primaryColor : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: hasDocFilter ? const Color(0xFF364F28) : const Color(0xFFE2E8F0),
+            color: hasDocFilter ? theme.primaryColor : const Color(0xFFE2E8F0),
           ),
         ),
         child: Row(
@@ -487,6 +515,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   }
 
   void _showMoreFiltersSheet() {
+    final theme = ref.read(appThemeProvider);
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -568,7 +597,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                         return ChoiceChip(
                           label: Text(doc),
                           selected: isSelected,
-                          selectedColor: const Color(0xFF364F28),
+                          selectedColor: theme.primaryColor,
                           backgroundColor: Colors.white,
                           labelStyle: TextStyle(
                             color: isSelected ? Colors.white : const Color(0xFF475569),
@@ -578,7 +607,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(20),
                             side: BorderSide(
-                              color: isSelected ? const Color(0xFF364F28) : const Color(0xFFE2E8F0),
+                              color: isSelected ? theme.primaryColor : const Color(0xFFE2E8F0),
                             ),
                           ),
                           onSelected: (val) {

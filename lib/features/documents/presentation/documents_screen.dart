@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../../core/theme/app_theme_controller.dart';
+import '../../../core/widgets/app_pull_to_refresh.dart';
 import '../../dashboard/data/dashboard_repository.dart';
 import '../../history/data/history_repository.dart';
 import '../data/document_repository.dart';
@@ -81,14 +83,15 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
       if (pickedFile == null || !mounted) return;
 
       // Show processing dialog
+      final theme = ref.read(appThemeProvider);
       showDialog(
         context: context,
         barrierDismissible: false,
         builder: (ctx) => Dialog(
           backgroundColor: Colors.white,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -97,11 +100,11 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                   height: 44,
                   child: CircularProgressIndicator(
                     strokeWidth: 3.5,
-                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF354E28)),
+                    valueColor: AlwaysStoppedAnimation<Color>(theme.primaryColor),
                   ),
                 ),
-                SizedBox(height: 20),
-                Text(
+                const SizedBox(height: 20),
+                const Text(
                   'Running AI Screening',
                   style: TextStyle(
                     fontSize: 16,
@@ -109,8 +112,8 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                     color: Color(0xFF1E293B),
                   ),
                 ),
-                SizedBox(height: 8),
-                Text(
+                const SizedBox(height: 8),
+                const Text(
                   'Analyzing document for tampering, OCR extraction, and risk verification on security server...',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
@@ -155,6 +158,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
   }
 
   void _showScreeningResultSheet(ScreeningProcessResult result) {
+    final theme = ref.read(appThemeProvider);
     final isHigh = result.riskLevel.toUpperCase() == 'HIGH' ||
         result.riskLevel.toUpperCase() == 'CRITICAL' ||
         result.fakeDocumentStatus.toUpperCase() == 'SUSPICIOUS';
@@ -272,8 +276,8 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                     Expanded(
                       child: OutlinedButton(
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFF354E28),
-                          side: const BorderSide(color: Color(0xFF354E28)),
+                          foregroundColor: theme.primaryColor,
+                          side: BorderSide(color: theme.primaryColor),
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
@@ -287,7 +291,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                     Expanded(
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF354E28),
+                          backgroundColor: theme.primaryColor,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -334,6 +338,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
 
   void _handleContinue() {
     if (_selectedDocType == null) return;
+    final theme = ref.read(appThemeProvider);
 
     showModalBottomSheet(
       context: context,
@@ -362,11 +367,11 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                  const SizedBox(height: 18),
-                  Text(
-                    'Capture $_selectedDocType',
-                    style: const TextStyle(
-                      fontSize: 18,
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Capture Document',
+                    style: TextStyle(
+                      fontSize: 19,
                       fontWeight: FontWeight.w800,
                       color: Color(0xFF1E293B),
                     ),
@@ -386,7 +391,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                       Expanded(
                         child: ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF475E35),
+                            backgroundColor: theme.primaryColor,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(
@@ -405,8 +410,8 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                       Expanded(
                         child: OutlinedButton.icon(
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: const Color(0xFF354E28),
-                            side: const BorderSide(color: Color(0xFF354E28)),
+                            foregroundColor: theme.primaryColor,
+                            side: BorderSide(color: theme.primaryColor),
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -434,98 +439,106 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
   @override
   Widget build(BuildContext context) {
     final bool isContinueEnabled = _selectedDocType != null;
+    final theme = ref.watch(appThemeProvider);
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAF9F5),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Removed Tactical Dark Green Header
-
-            // 2. Security Connection Bar
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 16),
-              color: const Color(0xFFDCFCE7),
-              child: const Row(
-                children: [
-                  Icon(
-                    Icons.lock_outline,
-                    size: 13,
+    return Container(
+      color: const Color(0xFFFAF9F5),
+      child: Column(
+        children: [
+          // 2. Security Connection Bar
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 16),
+            color: const Color(0xFFDCFCE7),
+            child: const Row(
+              children: [
+                Icon(
+                  Icons.lock_outline,
+                  size: 13,
+                  color: Color(0xFF15803D),
+                ),
+                SizedBox(width: 6),
+                Text(
+                  'SECURE CONNECTION · AUTHORIZED OFFICER',
+                  style: TextStyle(
                     color: Color(0xFF15803D),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.5,
                   ),
-                  SizedBox(width: 6),
-                  Text(
-                    'SECURE CONNECTION · AUTHORIZED OFFICER',
-                    style: TextStyle(
-                      color: Color(0xFF15803D),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
+          ),
 
-            // 3. Document Selection List
-            Expanded(
+          // 3. Document Selection List
+          Expanded(
+            child: AppPullToRefresh(
+              onRefresh: () async {
+                ref.invalidate(dashboardStatsProvider);
+                await ref.read(dashboardStatsProvider.future);
+              },
               child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
+                ),
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Subtitle Instruction
-                    const Padding(
-                      padding: EdgeInsets.only(left: 4, bottom: 14),
-                      child: Text(
-                        'Choose the document type to begin AI-assisted screening',
-                        style: TextStyle(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w500,
-                          color: Color(0xFF64748B),
-                        ),
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Subtitle Instruction
+                  const Padding(
+                    padding: EdgeInsets.only(left: 4, bottom: 14),
+                    child: Text(
+                      'Choose the document type to begin AI-assisted screening',
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF64748B),
                       ),
                     ),
+                  ),
 
-                    // Document Options List
-                    ..._docOptions.map((option) {
-                      final isSelected = _selectedDocType == option.title;
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12.0),
-                        child: _DocumentOptionCard(
-                          option: option,
-                          isSelected: isSelected,
-                          onTap: () {
-                            setState(() {
-                              _selectedDocType = option.title;
-                            });
-                          },
+                  // Document Options List
+                  ..._docOptions.map((option) {
+                    final isSelected = _selectedDocType == option.title;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12.0),
+                      child: _DocumentOptionCard(
+                        option: option,
+                        isSelected: isSelected,
+                        themeColor: theme.primaryColor,
+                        onTap: () {
+                          setState(() {
+                            _selectedDocType = option.title;
+                          });
+                        },
+                      ),
+                    );
+                  }),
+
+                  const SizedBox(height: 12),
+
+                  // 4. Continue Button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: isContinueEnabled
+                            ? theme.primaryColor
+                            : const Color(0xFFE2E8F0),
+                        foregroundColor: isContinueEnabled
+                            ? Colors.white
+                            : const Color(0xFF94A3B8),
+                        elevation: isContinueEnabled ? 2 : 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                      );
-                    }),
-
-                    const SizedBox(height: 12),
-
-                    // 4. Continue Button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: isContinueEnabled
-                              ? const Color(0xFF475E35)
-                              : const Color(0xFFE2E8F0),
-                          foregroundColor: isContinueEnabled
-                              ? Colors.white
-                              : const Color(0xFF94A3B8),
-                          elevation: isContinueEnabled ? 2 : 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        onPressed: isContinueEnabled ? _handleContinue : null,
+                      ),
+                      onPressed: isContinueEnabled ? _handleContinue : null,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
                         child: Text(
                           'CONTINUE TO DOCUMENT CAPTURE',
                           style: TextStyle(
@@ -539,15 +552,16 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                         ),
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
-          ],
+          ),
         ),
-      ),
-    );
-  }
+      ],
+    ),
+  );
+}
 }
 
 /// Model for Document Option
@@ -574,15 +588,19 @@ class _DocumentOptionCard extends StatelessWidget {
   final DocumentTypeOption option;
   final bool isSelected;
   final VoidCallback onTap;
+  final Color? themeColor;
 
   const _DocumentOptionCard({
     required this.option,
     required this.isSelected,
     required this.onTap,
+    this.themeColor,
   });
 
   @override
   Widget build(BuildContext context) {
+    final activeColor = themeColor ?? const Color(0xFF475E35);
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
@@ -594,14 +612,14 @@ class _DocumentOptionCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isSelected
-                ? const Color(0xFF475E35)
+                ? activeColor
                 : Colors.grey.shade200,
             width: isSelected ? 1.8 : 1.0,
           ),
           boxShadow: [
             BoxShadow(
               color: isSelected
-                  ? const Color(0xFF475E35).withValues(alpha: 0.08)
+                  ? activeColor.withValues(alpha: 0.08)
                   : Colors.black.withValues(alpha: 0.03),
               blurRadius: 8,
               offset: const Offset(0, 3),
@@ -633,12 +651,10 @@ class _DocumentOptionCard extends StatelessWidget {
                 children: [
                   Text(
                     option.title,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
-                      color: isSelected
-                          ? const Color(0xFF1E293B)
-                          : const Color(0xFF1E293B),
+                      color: Color(0xFF1E293B),
                     ),
                   ),
                   const SizedBox(height: 3),
@@ -662,7 +678,7 @@ class _DocumentOptionCard extends StatelessWidget {
                 shape: BoxShape.circle,
                 border: Border.all(
                   color: isSelected
-                      ? const Color(0xFF475E35)
+                      ? activeColor
                       : Colors.grey.shade400,
                   width: isSelected ? 6.5 : 1.5,
                 ),

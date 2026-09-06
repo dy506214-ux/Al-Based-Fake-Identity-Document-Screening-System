@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/theme/app_theme_controller.dart';
+import '../../../core/theme/app_theme_mode.dart';
+import '../../../core/widgets/app_pull_to_refresh.dart';
 import '../../authentication/presentation/auth_controller.dart';
+import '../../dashboard/data/dashboard_repository.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
-  void _showEditProfileSheet(BuildContext context) {
+  void _showEditProfileSheet(BuildContext context, AppThemeMode theme) {
     final nameController = TextEditingController(text: 'Officer Rajan Sharma');
     final emailController = TextEditingController(text: 'prakhar@gmail.com');
     final badgeController = TextEditingController(text: 'OFC-2024-0847');
@@ -81,15 +85,15 @@ class ProfileScreen extends ConsumerWidget {
                     height: 46,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF354E28),
+                        backgroundColor: theme.primaryColor,
                         foregroundColor: Colors.white,
                       ),
                       onPressed: () {
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            backgroundColor: Color(0xFF354E28),
-                            content: Text('Profile details updated successfully'),
+                          SnackBar(
+                            backgroundColor: theme.primaryColor,
+                            content: const Text('Profile details updated successfully'),
                           ),
                         );
                       },
@@ -108,7 +112,7 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  void _showChangePasswordSheet(BuildContext context) {
+  void _showChangePasswordSheet(BuildContext context, AppThemeMode theme) {
     final currentPass = TextEditingController();
     final newPass = TextEditingController();
 
@@ -175,15 +179,15 @@ class ProfileScreen extends ConsumerWidget {
                     height: 46,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF354E28),
+                        backgroundColor: theme.primaryColor,
                         foregroundColor: Colors.white,
                       ),
                       onPressed: () {
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            backgroundColor: Color(0xFF354E28),
-                            content: Text('Password updated successfully'),
+                          SnackBar(
+                            backgroundColor: theme.primaryColor,
+                            content: const Text('Password updated successfully'),
                           ),
                         );
                       },
@@ -202,7 +206,7 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  void _showSecuritySheet(BuildContext context) {
+  void _showSecuritySheet(BuildContext context, AppThemeMode theme) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -241,14 +245,14 @@ class ProfileScreen extends ConsumerWidget {
                 const SizedBox(height: 16),
                 SwitchListTile(
                   value: true,
-                  activeThumbColor: const Color(0xFF354E28),
+                  activeThumbColor: theme.primaryColor,
                   title: const Text('Biometric Authentication (Fingerprint/Face)'),
                   subtitle: const Text('Required on every document screening session'),
                   onChanged: (val) {},
                 ),
                 SwitchListTile(
                   value: true,
-                  activeThumbColor: const Color(0xFF354E28),
+                  activeThumbColor: theme.primaryColor,
                   title: const Text('Two-Factor Authentication (2FA)'),
                   subtitle: const Text('SSB Police Portal OTP verification'),
                   onChanged: (val) {},
@@ -259,7 +263,7 @@ class ProfileScreen extends ConsumerWidget {
                   height: 46,
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF354E28),
+                      backgroundColor: theme.primaryColor,
                       foregroundColor: Colors.white,
                     ),
                     onPressed: () => Navigator.pop(context),
@@ -312,173 +316,187 @@ class ProfileScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAF9F5),
-      body: SafeArea(
+    final theme = ref.watch(appThemeProvider);
+
+    return Container(
+      color: const Color(0xFFFAF9F5),
+      child: AppPullToRefresh(
+        onRefresh: () async {
+          ref.invalidate(dashboardStatsProvider);
+          await ref.read(dashboardStatsProvider.future);
+        },
         child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          ),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 1. Tactical Dark Green Header & Officer Banner
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
-                color: const Color(0xFF142416),
-                child: CustomPaint(
-                  painter: const ProfileTacticalGridPainter(),
-                  child: Column(
-                    children: [
-                      // Top Bar with Back Button and Title
-                      Row(
-                        children: [
-                          InkWell(
-                            onTap: () {
-                              context.go('/dashboard');
-                            },
-                            borderRadius: BorderRadius.circular(10),
-                            child: Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF223624),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.1),
-                                ),
-                              ),
-                              child: const Icon(
-                                Icons.arrow_back,
-                                color: Colors.white,
-                                size: 20,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                          const Text(
-                            'OFFICER PROFILE',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-
-                      // Large RS Avatar Circle
-                      Container(
-                        width: 72,
-                        height: 72,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF2E4627),
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.15),
-                            width: 2,
-                          ),
-                        ),
-                        alignment: Alignment.center,
-                        child: const Text(
-                          'RS',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 24,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 1,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-
-                      // Officer Name
-                      const Text(
-                        'Officer Rajan Sharma',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.3,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-
-                      // ID & Designation
-                      const Text(
-                        'OFC-2024-0847 · Senior Officer',
-                        style: TextStyle(
-                          color: Color(0xFFA3B19B),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-
-                      // Status & Clearance Badges
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 4),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 1. Tactical Header & Officer Banner with Theme Colors
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
+              color: theme.headerBackground,
+              child: CustomPaint(
+                painter: const ProfileTacticalGridPainter(),
+                child: Column(
+                  children: [
+                    // Top Bar with Back Button and Title
+                    Row(
+                      children: [
+                        InkWell(
+                          onTap: () {
+                            context.go('/dashboard');
+                          },
+                          borderRadius: BorderRadius.circular(10),
+                          child: Container(
+                            width: 40,
+                            height: 40,
                             decoration: BoxDecoration(
-                              color: const Color(0xFFDCFCE7),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: const Text(
-                              'Active',
-                              style: TextStyle(
-                                color: Color(0xFF15803D),
-                                fontSize: 11.5,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF223624),
-                              borderRadius: BorderRadius.circular(20),
+                              color: theme.primaryColor.withValues(alpha: 0.35),
+                              borderRadius: BorderRadius.circular(10),
                               border: Border.all(
                                 color: Colors.white.withValues(alpha: 0.1),
                               ),
                             ),
-                            child: const Text(
-                              'Level 3 Clearance',
-                              style: TextStyle(
-                                color: Color(0xFFC4D1BC),
-                                fontSize: 11.5,
-                                fontWeight: FontWeight.w600,
-                              ),
+                            child: const Icon(
+                              Icons.arrow_back,
+                              color: Colors.white,
+                              size: 20,
                             ),
                           ),
-                        ],
+                        ),
+                        const SizedBox(width: 14),
+                        const Text(
+                          'OFFICER PROFILE',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Large RS Avatar Circle
+                    Container(
+                      width: 72,
+                      height: 72,
+                      decoration: BoxDecoration(
+                        color: theme.primaryColor,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          width: 2,
+                        ),
                       ),
-                    ],
-                  ),
+                      alignment: Alignment.center,
+                      child: const Text(
+                        'RS',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Officer Name
+                    const Text(
+                      'Officer Rajan Sharma',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+
+                    // ID & Designation
+                    const Text(
+                      'OFC-2024-0847 · Senior Officer',
+                      style: TextStyle(
+                        color: Color(0xFFA3B19B),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Status & Clearance Badges
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFDCFCE7),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Text(
+                            'Active',
+                            style: TextStyle(
+                              color: Color(0xFF15803D),
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: theme.primaryColor.withValues(alpha: 0.35),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.15),
+                            ),
+                          ),
+                          child: const Text(
+                            'Level 3 Clearance',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
+            ),
 
-              // 2. SCREENING STATISTICS Section
-              const Padding(
-                padding: EdgeInsets.fromLTRB(16, 20, 16, 10),
-                child: Text(
-                  'SCREENING STATISTICS',
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF475569),
-                    letterSpacing: 0.8,
-                  ),
+            // 2. SCREENING STATISTICS Section
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 20, 16, 10),
+              child: Text(
+                'SCREENING STATISTICS',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF475569),
+                  letterSpacing: 0.8,
                 ),
               ),
+            ),
 
-              // 2x2 Statistics Cards Grid
-              Padding(
+            // 2x2 Statistics Cards Grid
+            Builder(builder: (context) {
+              final screenWidth = MediaQuery.sizeOf(context).width;
+              final cardAspectRatio = screenWidth < 360
+                  ? 1.25
+                  : (screenWidth < 390 ? 1.35 : 1.45);
+
+              return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: GridView.count(
                   crossAxisCount: 2,
@@ -486,131 +504,144 @@ class ProfileScreen extends ConsumerWidget {
                   mainAxisSpacing: 12,
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  childAspectRatio: 1.45,
-                  children: const [
+                  childAspectRatio: cardAspectRatio,
+                  children: [
                     _ProfileStatCard(
                       value: '1,248',
                       label: 'Total Screened',
+                      valueColor: theme.primaryColor,
                     ),
                     _ProfileStatCard(
                       value: '187',
                       label: 'This Month',
+                      valueColor: theme.primaryColor,
                     ),
                     _ProfileStatCard(
                       value: '43',
                       label: 'High Risk Cases',
+                      valueColor: theme.primaryColor,
                     ),
                     _ProfileStatCard(
                       value: '98.7%',
                       label: 'Accuracy Rate',
+                      valueColor: theme.primaryColor,
                     ),
                   ],
                 ),
-              ),
+              );
+            }),
 
-              // 3. ACCOUNT Section
-              const Padding(
-                padding: EdgeInsets.fromLTRB(16, 22, 16, 10),
-                child: Text(
-                  'ACCOUNT',
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF475569),
-                    letterSpacing: 0.8,
+            // 3. ACCOUNT Section
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 22, 16, 10),
+              child: Text(
+                'ACCOUNT',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF475569),
+                  letterSpacing: 0.8,
+                ),
+              ),
+            ),
+
+            // Action Items List
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                children: [
+                  _AccountActionCard(
+                    icon: Icons.edit_outlined,
+                    title: 'Edit Profile',
+                    subtitle: 'Update your personal details',
+                    iconColor: theme.primaryColor,
+                    onTap: () => _showEditProfileSheet(context, theme),
                   ),
-                ),
+                  const SizedBox(height: 10),
+                  _AccountActionCard(
+                    icon: Icons.vpn_key_outlined,
+                    title: 'Change Password',
+                    subtitle: 'Update your login credentials',
+                    iconColor: theme.primaryColor,
+                    onTap: () => _showChangePasswordSheet(context, theme),
+                  ),
+                  const SizedBox(height: 10),
+                  _AccountActionCard(
+                    icon: Icons.shield_outlined,
+                    title: 'Security',
+                    subtitle: 'Biometric, 2FA, session settings',
+                    iconColor: theme.primaryColor,
+                    onTap: () => _showSecuritySheet(context, theme),
+                  ),
+                ],
               ),
+            ),
 
-              // Action Items List
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  children: [
-                    _AccountActionCard(
-                      icon: Icons.edit_outlined,
-                      title: 'Edit Profile',
-                      subtitle: 'Update your personal details',
-                      onTap: () => _showEditProfileSheet(context),
+            // 4. Logout Button
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 28),
+              child: InkWell(
+                onTap: () => _confirmLogout(context, ref),
+                borderRadius: BorderRadius.circular(14),
+                child: Container(
+                  width: double.infinity,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEE2E2),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: const Color(0xFFFECDD3),
                     ),
-                    const SizedBox(height: 10),
-                    _AccountActionCard(
-                      icon: Icons.vpn_key_outlined,
-                      title: 'Change Password',
-                      subtitle: 'Update your login credentials',
-                      onTap: () => _showChangePasswordSheet(context),
-                    ),
-                    const SizedBox(height: 10),
-                    _AccountActionCard(
-                      icon: Icons.shield_outlined,
-                      title: 'Security',
-                      subtitle: 'Biometric, 2FA, session settings',
-                      onTap: () => _showSecuritySheet(context),
-                    ),
-                  ],
-                ),
-              ),
-
-              // 4. Logout Button
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 20, 16, 28),
-                child: InkWell(
-                  onTap: () => _confirmLogout(context, ref),
-                  borderRadius: BorderRadius.circular(14),
-                  child: Container(
-                    width: double.infinity,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFEE2E2),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: const Color(0xFFFECDD3),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.logout,
+                        size: 20,
+                        color: Color(0xFFDC2626),
                       ),
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.logout,
-                          size: 20,
+                      SizedBox(width: 8),
+                      Text(
+                        'Logout',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
                           color: Color(0xFFDC2626),
                         ),
-                        SizedBox(width: 8),
-                        Text(
-                          'Logout',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFFDC2626),
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
 
 /// Statistics Card for Profile Grid
 class _ProfileStatCard extends StatelessWidget {
   final String value;
   final String label;
+  final Color? valueColor;
 
   const _ProfileStatCard({
     required this.value,
     required this.label,
+    this.valueColor,
   });
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isExtraSmall = screenWidth < 360;
+
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(isExtraSmall ? 10 : 16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -626,21 +657,27 @@ class _ProfileStatCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 25,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF1B3A20),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: isExtraSmall ? 21 : 25,
+                fontWeight: FontWeight.w800,
+                color: valueColor ?? const Color(0xFF1B3A20),
+              ),
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Text(
             label,
-            style: const TextStyle(
-              fontSize: 12.5,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: isExtraSmall ? 11 : 12.5,
               fontWeight: FontWeight.w500,
-              color: Color(0xFF64748B),
+              color: const Color(0xFF64748B),
             ),
           ),
         ],
@@ -655,12 +692,14 @@ class _AccountActionCard extends StatelessWidget {
   final String title;
   final String subtitle;
   final VoidCallback onTap;
+  final Color? iconColor;
 
   const _AccountActionCard({
     required this.icon,
     required this.title,
     required this.subtitle,
     required this.onTap,
+    this.iconColor,
   });
 
   @override
@@ -693,7 +732,7 @@ class _AccountActionCard extends StatelessWidget {
               ),
               child: Icon(
                 icon,
-                color: const Color(0xFF354E28),
+                color: iconColor ?? const Color(0xFF354E28),
                 size: 22,
               ),
             ),

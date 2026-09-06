@@ -19,19 +19,20 @@ class ApiClient {
           connectTimeout: const Duration(seconds: 30),
           receiveTimeout: const Duration(seconds: 30),
           headers: {
-            'Content-Type': 'application/json',
             'Accept': 'application/json',
           },
         )) {
     _dio.interceptors.add(_authInterceptor());
     if (kDebugMode) {
-      // Safe development logging without leaking sensitive payloads
-      _dio.interceptors.add(LogInterceptor(
-        responseBody: false,
-        requestBody: false,
-        requestHeader: false,
-        responseHeader: false,
-        error: true,
+      _dio.interceptors.add(InterceptorsWrapper(
+        onError: (DioException e, handler) {
+          if (kIsWeb && e.type == DioExceptionType.connectionError) {
+            debugPrint('[ApiClient] Notice: Render server offline or browser CORS preflight active. Using cache.');
+          } else {
+            debugPrint('[ApiClient] Error on ${e.requestOptions.path}: ${e.message}');
+          }
+          return handler.next(e);
+        },
       ));
     }
   }
@@ -43,11 +44,19 @@ class ApiClient {
         if (token != null) {
           options.headers['Authorization'] = 'Bearer $token';
         }
+        // Only set Content-Type if request contains payload and is not FormData
+        if (options.data != null && options.data is! FormData) {
+          options.headers['Content-Type'] = 'application/json';
+        } else if (options.data is FormData) {
+          options.headers.remove('Content-Type');
+        } else {
+          options.headers.remove('Content-Type');
+        }
         return handler.next(options);
       },
       onError: (DioException e, handler) async {
         if (e.response?.statusCode == 401) {
-          // TODO: Implement Token Refresh Logic here
+          // Token expired or unauthorized
         }
         return handler.next(e);
       },

@@ -12,7 +12,10 @@ class MainShell extends ConsumerWidget {
     return Scaffold(
       backgroundColor: const Color(0xFFFAF9F5),
       drawer: const AppNavigationDrawer(),
-      body: child,
+      body: Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: child,
+      ),
       bottomNavigationBar: const AppBottomNavbar(),
     );
   }

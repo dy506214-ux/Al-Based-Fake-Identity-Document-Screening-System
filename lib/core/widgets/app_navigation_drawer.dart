@@ -16,9 +16,6 @@ class _AppNavigationDrawerState extends ConsumerState<AppNavigationDrawer> {
   // Currently hovered navigation item key (e.g. 'dashboard', 'documents', etc.)
   String? _hoveredNavKey;
 
-  // Currently hovered theme mode in the vertical theme list
-  AppThemeMode? _hoveredThemeMode;
-
   // Hover state for the logout button
   bool _isLogoutHovered = false;
 
@@ -40,7 +37,7 @@ class _AppNavigationDrawerState extends ConsumerState<AppNavigationDrawer> {
 
     return Drawer(
       width: drawerWidth,
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: Colors.white,
       child: SafeArea(
         child: Column(
           children: [
@@ -48,11 +45,11 @@ class _AppNavigationDrawerState extends ConsumerState<AppNavigationDrawer> {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: theme.headerBackground,
+              decoration: const BoxDecoration(
+                color: Color(0xFFF2FAF3),
                 border: Border(
                   bottom: BorderSide(
-                    color: theme.accentColor.withValues(alpha: 0.25),
+                    color: Color(0xFFE2E8F0),
                     width: 1.5,
                   ),
                 ),
@@ -64,30 +61,24 @@ class _AppNavigationDrawerState extends ConsumerState<AppNavigationDrawer> {
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.4),
+                      color: const Color(0xFFEAF6EC),
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                        color: theme.accentColor,
+                        color: theme.primaryColor,
                         width: 1.5,
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: theme.glowColor,
-                          blurRadius: 10,
-                        ),
-                      ],
                     ),
                     child: Stack(
                       alignment: Alignment.center,
                       children: [
                         Icon(
                           Icons.shield_outlined,
-                          color: theme.accentColor,
+                          color: theme.primaryColor,
                           size: 30,
                         ),
-                        const Icon(
+                        Icon(
                           Icons.person,
-                          color: Colors.white,
+                          color: theme.primaryColor,
                           size: 16,
                         ),
                       ],
@@ -98,35 +89,35 @@ class _AppNavigationDrawerState extends ConsumerState<AppNavigationDrawer> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Officer Sharma',
                           style: TextStyle(
-                            color: Colors.white,
+                            color: Color(0xFF0F172A),
                             fontSize: 16,
                             fontWeight: FontWeight.w800,
                             letterSpacing: 0.3,
                           ),
                         ),
-                        const SizedBox(height: 3),
+                        SizedBox(height: 3),
                         Row(
                           children: [
                             Container(
                               width: 6,
                               height: 6,
-                              decoration: const BoxDecoration(
-                                color: Color(0xFF22C55E),
+                              decoration: BoxDecoration(
+                                color: Color(0xFF16A34A),
                                 shape: BoxShape.circle,
                               ),
                             ),
-                            const SizedBox(width: 6),
-                            const Expanded(
+                            SizedBox(width: 6),
+                            Expanded(
                               child: FittedBox(
                                 fit: BoxFit.scaleDown,
                                 alignment: Alignment.centerLeft,
                                 child: Text(
                                   'OFC-2024-0847 • Active',
                                   style: TextStyle(
-                                    color: Color(0xFF4ADE80),
+                                    color: Color(0xFF15803D),
                                     fontSize: 11,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -135,14 +126,14 @@ class _AppNavigationDrawerState extends ConsumerState<AppNavigationDrawer> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 2),
-                        const FittedBox(
+                        SizedBox(height: 2),
+                        FittedBox(
                           fit: BoxFit.scaleDown,
                           alignment: Alignment.centerLeft,
                           child: Text(
                             'Authorized Officer Console',
                             style: TextStyle(
-                              color: Color(0x80FFFFFF),
+                              color: Color(0xFF64748B),
                               fontSize: 10,
                             ),
                           ),
@@ -154,7 +145,7 @@ class _AppNavigationDrawerState extends ConsumerState<AppNavigationDrawer> {
               ),
             ),
 
-            // 2. Navigation Items & Vertical Active Theme (Smoothly Scrollable)
+            // 2. Navigation Items (Smoothly Scrollable)
             Expanded(
               child: ListView(
                 physics: const BouncingScrollPhysics(),
@@ -215,56 +206,6 @@ class _AppNavigationDrawerState extends ConsumerState<AppNavigationDrawer> {
                       context.go('/profile');
                     },
                   ),
-
-                  const SizedBox(height: 16),
-
-                  // ACTIVE THEME Section Header
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                    child: Text(
-                      'ACTIVE THEME',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.45),
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.8,
-                      ),
-                    ),
-                  ),
-
-                  // VERTICAL Theme Selection Container
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.28),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: theme.accentColor.withValues(alpha: 0.22),
-                        width: 1.2,
-                      ),
-                    ),
-                    child: Column(
-                      children: AppThemeMode.values.map((mode) {
-                        final isSel = mode == theme;
-                        final isHov = mode == _hoveredThemeMode;
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 3),
-                          child: _buildVerticalThemeRow(
-                            mode: mode,
-                            isSelected: isSel,
-                            isHovered: isHov,
-                            theme: theme,
-                            onTap: () {
-                              ref.read(appThemeProvider.notifier).setTheme(mode);
-                            },
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-
-                  const SizedBox(height: 8),
                 ],
               ),
             ),
@@ -272,10 +213,10 @@ class _AppNavigationDrawerState extends ConsumerState<AppNavigationDrawer> {
             // 3. Logout Footer
             Container(
               padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 border: Border(
                   top: BorderSide(
-                    color: Colors.white.withValues(alpha: 0.08),
+                    color: Color(0xFFE2E8F0),
                   ),
                 ),
               ),
@@ -297,34 +238,25 @@ class _AppNavigationDrawerState extends ConsumerState<AppNavigationDrawer> {
                       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                       decoration: BoxDecoration(
                         color: _isLogoutHovered
-                            ? const Color(0xFFEF4444).withValues(alpha: 0.22)
-                            : const Color(0xFFEF4444).withValues(alpha: 0.12),
+                            ? const Color(0xFFFEE2E2)
+                            : const Color(0xFFFEF2F2),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
                           color: _isLogoutHovered
-                              ? const Color(0xFFEF4444).withValues(alpha: 0.6)
-                              : const Color(0xFFEF4444).withValues(alpha: 0.3),
+                              ? const Color(0xFFEF4444)
+                              : const Color(0xFFFCA5A5),
                           width: _isLogoutHovered ? 1.4 : 1.0,
                         ),
-                        boxShadow: _isLogoutHovered
-                            ? [
-                                BoxShadow(
-                                  color: const Color(0xFFEF4444).withValues(alpha: 0.25),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ]
-                            : null,
                       ),
                       child: const Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.logout_rounded, color: Color(0xFFEF4444), size: 18),
+                          Icon(Icons.logout_rounded, color: Color(0xFFDC2626), size: 18),
                           SizedBox(width: 8),
                           Text(
                             'LOGOUT SESSION',
                             style: TextStyle(
-                              color: Color(0xFFEF4444),
+                              color: Color(0xFFDC2626),
                               fontWeight: FontWeight.w700,
                               fontSize: 12.5,
                               letterSpacing: 0.5,
@@ -353,41 +285,13 @@ class _AppNavigationDrawerState extends ConsumerState<AppNavigationDrawer> {
   }) {
     final bool isHovered = _hoveredNavKey == itemKey;
 
-    // Background color:
-    // When hovered: theme.accentColor with higher opacity
-    // When selected but not hovered: theme.accentColor with subtle opacity
-    // When unselected & unhovered: transparent
-    final Color bgColor = isHovered
-        ? theme.accentColor.withValues(alpha: isSelected ? 0.24 : 0.16)
-        : (isSelected
-            ? theme.accentColor.withValues(alpha: 0.14)
-            : Colors.transparent);
+    final Color bgColor = isSelected
+        ? const Color(0xFFEAF6EC)
+        : (isHovered ? const Color(0xFFF1F5F9) : Colors.transparent);
 
-    // Border color:
-    final Color borderColor = isHovered
-        ? theme.accentColor.withValues(alpha: isSelected ? 0.75 : 0.50)
-        : (isSelected
-            ? theme.accentColor.withValues(alpha: 0.35)
-            : Colors.transparent);
-
-    // Box shadow glow:
-    final List<BoxShadow>? shadows = isHovered
-        ? [
-            BoxShadow(
-              color: theme.accentColor.withValues(alpha: 0.24),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ]
-        : (isSelected
-            ? [
-                BoxShadow(
-                  color: theme.accentColor.withValues(alpha: 0.12),
-                  blurRadius: 6,
-                  offset: const Offset(0, 1),
-                ),
-              ]
-            : null);
+    final Color borderColor = isSelected
+        ? theme.primaryColor.withValues(alpha: 0.4)
+        : (isHovered ? const Color(0xFFCBD5E1) : Colors.transparent);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 4),
@@ -422,15 +326,14 @@ class _AppNavigationDrawerState extends ConsumerState<AppNavigationDrawer> {
                   color: borderColor,
                   width: (isHovered || isSelected) ? 1.2 : 1.0,
                 ),
-                boxShadow: shadows,
               ),
               child: Row(
                 children: [
                   Icon(
                     icon,
-                    color: (isHovered || isSelected)
-                        ? theme.accentColor
-                        : Colors.white.withValues(alpha: 0.7),
+                    color: isSelected
+                        ? theme.primaryColor
+                        : (isHovered ? const Color(0xFF0F172A) : const Color(0xFF64748B)),
                     size: 20,
                   ),
                   const SizedBox(width: 12),
@@ -438,9 +341,9 @@ class _AppNavigationDrawerState extends ConsumerState<AppNavigationDrawer> {
                     child: Text(
                       title,
                       style: TextStyle(
-                        color: (isHovered || isSelected)
-                            ? Colors.white
-                            : Colors.white.withValues(alpha: 0.8),
+                        color: isSelected
+                            ? theme.primaryColor
+                            : (isHovered ? const Color(0xFF0F172A) : const Color(0xFF334155)),
                         fontWeight: (isHovered || isSelected)
                             ? FontWeight.w700
                             : FontWeight.w500,
@@ -449,28 +352,20 @@ class _AppNavigationDrawerState extends ConsumerState<AppNavigationDrawer> {
                     ),
                   ),
                   if (isSelected)
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 160),
+                    Container(
                       width: 6,
                       height: 6,
                       decoration: BoxDecoration(
-                        color: theme.accentColor,
+                        color: theme.primaryColor,
                         shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: theme.accentColor.withValues(alpha: 0.8),
-                            blurRadius: 6,
-                          ),
-                        ],
                       ),
                     )
                   else if (isHovered)
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 160),
+                    Container(
                       width: 5,
                       height: 5,
-                      decoration: BoxDecoration(
-                        color: theme.accentColor.withValues(alpha: 0.65),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF94A3B8),
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -482,132 +377,5 @@ class _AppNavigationDrawerState extends ConsumerState<AppNavigationDrawer> {
       ),
     );
   }
-
-  Widget _buildVerticalThemeRow({
-    required AppThemeMode mode,
-    required bool isSelected,
-    required bool isHovered,
-    required AppThemeMode theme,
-    required VoidCallback onTap,
-  }) {
-    return MouseRegion(
-      onEnter: (_) {
-        setState(() {
-          _hoveredThemeMode = mode;
-        });
-      },
-      onExit: (_) {
-        setState(() {
-          if (_hoveredThemeMode == mode) {
-            _hoveredThemeMode = null;
-          }
-        });
-      },
-      child: Semantics(
-        label: 'Select ${mode.label} theme',
-        selected: isSelected,
-        button: true,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(10),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 160),
-            curve: Curves.easeOutCubic,
-            height: 42,
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? mode.swatchColor.withValues(alpha: 0.16)
-                  : (isHovered
-                      ? mode.swatchColor.withValues(alpha: 0.09)
-                      : Colors.white.withValues(alpha: 0.025)),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: isSelected
-                    ? mode.swatchColor.withValues(alpha: 0.6)
-                    : (isHovered
-                        ? mode.swatchColor.withValues(alpha: 0.3)
-                        : Colors.white.withValues(alpha: 0.06)),
-                width: isSelected ? 1.4 : 1.0,
-              ),
-              boxShadow: isSelected
-                  ? [
-                      BoxShadow(
-                        color: mode.swatchColor.withValues(alpha: 0.22),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ]
-                  : (isHovered
-                      ? [
-                          BoxShadow(
-                            color: mode.swatchColor.withValues(alpha: 0.12),
-                            blurRadius: 5,
-                          ),
-                        ]
-                      : null),
-            ),
-            child: Row(
-              children: [
-                // 1. Color Circle with glow
-                Container(
-                  width: 22,
-                  height: 22,
-                  decoration: BoxDecoration(
-                    color: mode.swatchColor,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: isSelected ? Colors.white : Colors.transparent,
-                      width: 1.5,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: mode.swatchColor.withValues(alpha: isSelected ? 0.6 : 0.3),
-                        blurRadius: isSelected ? 6 : 4,
-                        offset: const Offset(0, 1),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-
-                // 2. Theme Name
-                Expanded(
-                  child: Text(
-                    mode.label,
-                    style: TextStyle(
-                      color: isSelected
-                          ? Colors.white
-                          : (isHovered ? Colors.white : Colors.white.withValues(alpha: 0.85)),
-                      fontSize: 13,
-                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                      letterSpacing: 0.2,
-                    ),
-                  ),
-                ),
-
-                // 3. Checkmark When Selected
-                if (isSelected)
-                  Container(
-                    width: 20,
-                    height: 20,
-                    decoration: BoxDecoration(
-                      color: mode.swatchColor,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.check_rounded,
-                      color: Colors.white,
-                      size: 13,
-                    ),
-                  )
-                else
-                  const SizedBox(width: 20),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }
+

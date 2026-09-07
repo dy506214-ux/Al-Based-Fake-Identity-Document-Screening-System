@@ -2,27 +2,29 @@ import 'package:flutter/material.dart';
 
 class AppColors {
   // Primary & Background
-  static const Color primary = Color(0xFF1976D2); // Blue primary actions
-  static const Color background = Color(0xFFF8F9FA); // White/light interface
+  static const Color primary = Color(0xFF2F5D2A); // Professional Green
+  static const Color secondary = Color(0xFF3F7A38); // Secondary Green
+  static const Color background = Color(0xFFF8FAF8); // Light off-white background
   static const Color surface = Colors.white;
-  static const Color scaffoldBackground = Color(0xFFF5F7FA);
+  static const Color scaffoldBackground = Color(0xFFF8FAF8);
 
   // Text
-  static const Color textPrimary = Color(0xFF1C2833); // Deep navy text
-  static const Color textSecondary = Color(0xFF5D6D7E);
-  static const Color textHint = Color(0xFFB3B6B7);
+  static const Color textPrimary = Color(0xFF1E293B); // Dark slate text
+  static const Color textSecondary = Color(0xFF64748B); // Muted slate text
+  static const Color textHint = Color(0xFF94A3B8);
 
   // Status & Indicators
-  static const Color success = Color(0xFF4CAF50); // Green success
-  static const Color warning = Color(0xFFFF9800); // Orange warning
-  static const Color error = Color(0xFFF44336); // Red high-risk
-  static const Color highRisk = Color(0xFFD32F2F);
-  static const Color mediumRisk = Color(0xFFF57C00);
-  static const Color lowRisk = Color(0xFF388E3C);
+  static const Color success = Color(0xFF16A34A); // Green success
+  static const Color warning = Color(0xFFEA580C); // Orange warning
+  static const Color error = Color(0xFFDC2626); // Red high-risk
+  static const Color highRisk = Color(0xFFDC2626);
+  static const Color mediumRisk = Color(0xFFEA580C);
+  static const Color lowRisk = Color(0xFF16A34A);
   
-  static const Color aiIndicator = Color(0xFF9C27B0); // Purple AI indicators
+  static const Color aiIndicator = Color(0xFF2F5D2A); // Professional Green AI indicators
 
   // Borders & Dividers
-  static const Color border = Color(0xFFE0E0E0);
-  static const Color divider = Color(0xFFEEEEEE);
+  static const Color border = Color(0xFFE2E8F0);
+  static const Color divider = Color(0xFFF1F5F9);
 }
+

@@ -82,11 +82,8 @@ class _AppPullToRefreshState extends ConsumerState<AppPullToRefresh> {
   Widget build(BuildContext context) {
     final theme = ref.watch(appThemeProvider);
 
-    final indicatorColor = widget.color ?? theme.accentColor;
-    final bgColor = widget.backgroundColor ??
-        (widget.isDarkTheme
-            ? const Color(0xFF0C172E)
-            : Colors.white);
+    final indicatorColor = widget.color ?? theme.primaryColor;
+    final bgColor = widget.backgroundColor ?? Colors.white;
 
     return RefreshIndicator(
       onRefresh: _handleRefresh,

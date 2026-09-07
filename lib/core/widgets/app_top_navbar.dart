@@ -32,7 +32,6 @@ class AppTopNavbar extends ConsumerStatefulWidget {
 }
 
 class _AppTopNavbarState extends ConsumerState<AppTopNavbar> {
-  final GlobalKey _paletteKey = GlobalKey();
   final GlobalKey _bellKey = GlobalKey();
   bool _isNotificationOpen = false;
 
@@ -159,96 +158,6 @@ class _AppTopNavbarState extends ConsumerState<AppTopNavbar> {
     });
   }
 
-  void _openThemeMenu(BuildContext context, AppThemeMode currentMode) async {
-    final renderBox =
-        _paletteKey.currentContext?.findRenderObject() as RenderBox?;
-    if (renderBox == null) return;
-    final overlay =
-        Overlay.of(context).context.findRenderObject() as RenderBox?;
-    if (overlay == null) return;
-
-    final position = RelativeRect.fromRect(
-      Rect.fromPoints(
-        renderBox.localToGlobal(Offset.zero, ancestor: overlay),
-        renderBox.localToGlobal(
-          renderBox.size.bottomRight(Offset.zero),
-          ancestor: overlay,
-        ),
-      ),
-      Offset.zero & overlay.size,
-    );
-
-    final selected = await showMenu<AppThemeMode>(
-      context: context,
-      position: position,
-      color: const Color(0xFF0F172A),
-      elevation: 12,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: currentMode.accentColor.withValues(alpha: 0.5),
-          width: 1.5,
-        ),
-      ),
-      items: AppThemeMode.values.map((mode) {
-        final isSelected = mode == currentMode;
-        return PopupMenuItem<AppThemeMode>(
-          value: mode,
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? mode.accentColor.withValues(alpha: 0.22)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 20,
-                  height: 20,
-                  decoration: BoxDecoration(
-                    color: mode.swatchColor,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: mode.swatchColor.withValues(alpha: 0.4),
-                        blurRadius: 4,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    mode.label,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 13.5,
-                      fontWeight:
-                          isSelected ? FontWeight.w700 : FontWeight.w500,
-                    ),
-                  ),
-                ),
-                if (isSelected)
-                  const Icon(
-                    Icons.check_rounded,
-                    color: Colors.white,
-                    size: 18,
-                  ),
-              ],
-            ),
-          ),
-        );
-      }).toList(),
-    );
-
-    if (selected != null) {
-      ref.read(appThemeProvider.notifier).setTheme(selected);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = ref.watch(appThemeProvider);
@@ -279,22 +188,18 @@ class _AppTopNavbarState extends ConsumerState<AppTopNavbar> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: theme.headerBackground,
-        border: Border(
-          top: BorderSide(
-            color: theme.accentColor.withValues(alpha: 0.85),
-            width: 1.5,
-          ),
+        color: const Color(0xFFF2FAF3),
+        border: const Border(
           bottom: BorderSide(
-            color: theme.accentColor.withValues(alpha: 0.18),
+            color: Color(0xFFE2E8F0),
             width: 1.0,
           ),
         ),
         boxShadow: [
           BoxShadow(
-            color: theme.glowColor,
-            blurRadius: 18,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -329,17 +234,17 @@ class _AppTopNavbarState extends ConsumerState<AppTopNavbar> {
                           vertical: pillVertPadding,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.35),
+                          color: Colors.white,
                           borderRadius: BorderRadius.circular(32),
                           border: Border.all(
-                            color: theme.accentColor.withValues(alpha: 0.55),
+                            color: theme.accentColor.withValues(alpha: 0.35),
                             width: 1.2,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: theme.accentColor.withValues(alpha: 0.22),
-                              blurRadius: 12,
-                              spreadRadius: 1,
+                              color: Colors.black.withValues(alpha: 0.03),
+                              blurRadius: 6,
+                              spreadRadius: 0,
                             ),
                           ],
                         ),
@@ -351,31 +256,25 @@ class _AppTopNavbarState extends ConsumerState<AppTopNavbar> {
                               width: badgeSize,
                               height: badgeSize,
                               decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.45),
+                                color: const Color(0xFFEAF6EC),
                                 borderRadius: BorderRadius.circular(
                                     isExtraSmall ? 8 : 12),
                                 border: Border.all(
-                                  color: theme.accentColor,
+                                  color: theme.primaryColor,
                                   width: 1.3,
                                 ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: theme.glowColor,
-                                    blurRadius: 8,
-                                  ),
-                                ],
                               ),
                               child: Stack(
                                 alignment: Alignment.center,
                                 children: [
                                   Icon(
                                     Icons.shield_outlined,
-                                    color: theme.accentColor,
+                                    color: theme.primaryColor,
                                     size: shieldIconSize,
                                   ),
                                   Icon(
                                     Icons.person,
-                                    color: Colors.white,
+                                    color: theme.primaryColor,
                                     size: personIconSize,
                                   ),
                                 ],
@@ -393,7 +292,7 @@ class _AppTopNavbarState extends ConsumerState<AppTopNavbar> {
                                   'Good Morning,',
                                   maxLines: 1,
                                   style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.75),
+                                    color: const Color(0xFF64748B),
                                     fontSize: greetingFontSize,
                                     fontWeight: FontWeight.w500,
                                     letterSpacing: 0.2,
@@ -404,7 +303,7 @@ class _AppTopNavbarState extends ConsumerState<AppTopNavbar> {
                                   'Officer Sharma',
                                   maxLines: 1,
                                   style: TextStyle(
-                                    color: Colors.white,
+                                    color: const Color(0xFF0F172A),
                                     fontSize: nameFontSize,
                                     fontWeight: FontWeight.w800,
                                     letterSpacing: 0.3,
@@ -418,7 +317,7 @@ class _AppTopNavbarState extends ConsumerState<AppTopNavbar> {
                                       width: isExtraSmall ? 4.5 : 5.5,
                                       height: isExtraSmall ? 4.5 : 5.5,
                                       decoration: const BoxDecoration(
-                                        color: Color(0xFF22C55E),
+                                        color: Color(0xFF16A34A),
                                         shape: BoxShape.circle,
                                       ),
                                     ),
@@ -427,7 +326,7 @@ class _AppTopNavbarState extends ConsumerState<AppTopNavbar> {
                                       'OFC-2024-0847 • Active',
                                       maxLines: 1,
                                       style: TextStyle(
-                                        color: const Color(0xFF4ADE80),
+                                        color: const Color(0xFF15803D),
                                         fontSize: statusFontSize,
                                         fontWeight: FontWeight.w700,
                                         letterSpacing: 0.2,
@@ -447,17 +346,9 @@ class _AppTopNavbarState extends ConsumerState<AppTopNavbar> {
 
               SizedBox(width: elementSpacing),
 
-              // 3. Right: Notification Bell Button + Theme Palette Button
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildNotificationButton(
-                      context, theme, unreadCount, btnSize, isExtraSmall),
-                  SizedBox(width: isExtraSmall ? 5 : (isSmall ? 6 : 8)),
-                  _buildThemeButton(
-                      context, theme, btnSize, isExtraSmall, isSmall),
-                ],
-              ),
+              // 3. Right: Notification Bell Button
+              _buildNotificationButton(
+                  context, theme, unreadCount, btnSize, isExtraSmall),
             ],
           ),
         ),
@@ -480,16 +371,16 @@ class _AppTopNavbarState extends ConsumerState<AppTopNavbar> {
             height: size,
             constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
             decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.32),
+              color: Colors.white,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: theme.accentColor.withValues(alpha: 0.45),
-                width: 1.2,
+                color: const Color(0xFFCBD5E1),
+                width: 1.0,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: theme.accentColor.withValues(alpha: 0.15),
-                  blurRadius: 8,
+                  color: Colors.black.withValues(alpha: 0.03),
+                  blurRadius: 4,
                 ),
               ],
             ),
@@ -501,7 +392,7 @@ class _AppTopNavbarState extends ConsumerState<AppTopNavbar> {
                     width: size > 40 ? 18 : 16,
                     height: 2.2,
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: const Color(0xFF1E293B),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -510,7 +401,7 @@ class _AppTopNavbarState extends ConsumerState<AppTopNavbar> {
                     width: size > 40 ? 18 : 16,
                     height: 2.2,
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: const Color(0xFF1E293B),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -519,7 +410,7 @@ class _AppTopNavbarState extends ConsumerState<AppTopNavbar> {
                     width: size > 40 ? 18 : 16,
                     height: 2.2,
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: const Color(0xFF1E293B),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -549,20 +440,19 @@ class _AppTopNavbarState extends ConsumerState<AppTopNavbar> {
             constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
             decoration: BoxDecoration(
               color: _isNotificationOpen
-                  ? theme.accentColor.withValues(alpha: 0.28)
-                  : Colors.black.withValues(alpha: 0.32),
+                  ? const Color(0xFFEAF6EC)
+                  : Colors.white,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
                 color: _isNotificationOpen
-                    ? theme.accentColor
-                    : theme.accentColor.withValues(alpha: 0.45),
+                    ? theme.primaryColor
+                    : const Color(0xFFCBD5E1),
                 width: 1.2,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: theme.accentColor
-                      .withValues(alpha: _isNotificationOpen ? 0.35 : 0.15),
-                  blurRadius: _isNotificationOpen ? 12 : 8,
+                  color: Colors.black.withValues(alpha: 0.03),
+                  blurRadius: 4,
                 ),
               ],
             ),
@@ -574,7 +464,9 @@ class _AppTopNavbarState extends ConsumerState<AppTopNavbar> {
                     _isNotificationOpen
                         ? Icons.notifications_active_rounded
                         : Icons.notifications_none_rounded,
-                    color: Colors.white,
+                    color: _isNotificationOpen
+                        ? theme.primaryColor
+                        : const Color(0xFF334155),
                     size: isExtraSmall ? 19 : 22,
                   ),
                 ),
@@ -599,8 +491,8 @@ class _AppTopNavbarState extends ConsumerState<AppTopNavbar> {
                         boxShadow: [
                           BoxShadow(
                             color:
-                                const Color(0xFFEF4444).withValues(alpha: 0.5),
-                            blurRadius: 4,
+                                const Color(0xFFEF4444).withValues(alpha: 0.3),
+                            blurRadius: 3,
                           ),
                         ],
                       ),
@@ -617,58 +509,6 @@ class _AppTopNavbarState extends ConsumerState<AppTopNavbar> {
                       ),
                     ),
                   ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildThemeButton(BuildContext context, AppThemeMode theme,
-      double size, bool isExtraSmall, bool isSmall) {
-    return Semantics(
-      label: 'Change theme color',
-      button: true,
-      child: Tooltip(
-        message: 'Change theme color',
-        child: InkWell(
-          key: _paletteKey,
-          onTap: () => _openThemeMenu(context, theme),
-          borderRadius: BorderRadius.circular(16),
-          child: Container(
-            height: size,
-            constraints: const BoxConstraints(minHeight: 40),
-            padding: EdgeInsets.symmetric(
-                horizontal: isExtraSmall ? 6 : (isSmall ? 8 : 10)),
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.32),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: theme.accentColor.withValues(alpha: 0.55),
-                width: 1.2,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: theme.accentColor.withValues(alpha: 0.2),
-                  blurRadius: 8,
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.palette_rounded,
-                  color: Colors.white,
-                  size: isExtraSmall ? 17 : 20,
-                ),
-                SizedBox(width: isExtraSmall ? 2 : 3),
-                Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: Colors.white.withValues(alpha: 0.8),
-                  size: isExtraSmall ? 15 : 18,
-                ),
               ],
             ),
           ),
@@ -704,22 +544,17 @@ class _NotificationPopoverCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF0C162C),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: theme.accentColor.withValues(alpha: 0.55),
+          color: const Color(0xFFE2E8F0),
           width: 1.2,
         ),
         boxShadow: [
           BoxShadow(
-            color: theme.accentColor.withValues(alpha: 0.22),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.65),
+            color: Colors.black.withValues(alpha: 0.12),
             blurRadius: 16,
-            offset: const Offset(0, 4),
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -737,12 +572,12 @@ class _NotificationPopoverCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
-                      color: theme.accentColor.withValues(alpha: 0.18),
+                      color: const Color(0xFFEAF6EC),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Icon(
                       Icons.notifications_active_outlined,
-                      color: theme.accentColor,
+                      color: theme.primaryColor,
                       size: 15,
                     ),
                   ),
@@ -753,7 +588,7 @@ class _NotificationPopoverCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: Colors.white,
+                        color: Color(0xFF0F172A),
                         fontSize: 12,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 0.5,
@@ -785,14 +620,14 @@ class _NotificationPopoverCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                     child: Container(
                       padding: const EdgeInsets.all(3),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.08),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFF1F5F9),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
                         Icons.close_rounded,
                         size: 14,
-                        color: Colors.white70,
+                        color: Color(0xFF64748B),
                       ),
                     ),
                   ),
@@ -800,9 +635,9 @@ class _NotificationPopoverCard extends StatelessWidget {
               ),
             ),
 
-            Divider(
+            const Divider(
               height: 1,
-              color: Colors.white.withValues(alpha: 0.10),
+              color: Color(0xFFE2E8F0),
             ),
 
             // 2. Notifications Scrollable Content List
@@ -812,7 +647,7 @@ class _NotificationPopoverCard extends StatelessWidget {
               ),
               child: AppPullToRefresh(
                 onRefresh: onRefresh ?? () async {},
-                isDarkTheme: true,
+                isDarkTheme: false,
                 displacement: 20.0,
                 child: SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(
@@ -832,9 +667,9 @@ class _NotificationPopoverCard extends StatelessWidget {
                         time: '10 min ago',
                         tagLabel: 'HIGH RISK',
                         icon: Icons.warning_amber_rounded,
-                        iconColor: const Color(0xFFEF4444),
-                        bgColor: const Color(0xFFEF4444).withValues(alpha: 0.14),
-                        tagColor: const Color(0xFFEF4444),
+                        iconColor: const Color(0xFFDC2626),
+                        bgColor: const Color(0xFFFEF2F2),
+                        tagColor: const Color(0xFFDC2626),
                         onTap: () => onSelectNotification('/history'),
                       ),
                       const SizedBox(height: 7),
@@ -846,9 +681,9 @@ class _NotificationPopoverCard extends StatelessWidget {
                         time: '25 min ago',
                         tagLabel: 'PENDING',
                         icon: Icons.pending_actions_rounded,
-                        iconColor: const Color(0xFFF97316),
-                        bgColor: const Color(0xFFF97316).withValues(alpha: 0.14),
-                        tagColor: const Color(0xFFF97316),
+                        iconColor: const Color(0xFFEA580C),
+                        bgColor: const Color(0xFFFFF7ED),
+                        tagColor: const Color(0xFFEA580C),
                         onTap: () => onSelectNotification('/history'),
                       ),
                       const SizedBox(height: 7),
@@ -860,9 +695,9 @@ class _NotificationPopoverCard extends StatelessWidget {
                         time: '1 hr ago',
                         tagLabel: 'SYNCED',
                         icon: Icons.check_circle_outline_rounded,
-                        iconColor: const Color(0xFF22C55E),
-                        bgColor: const Color(0xFF22C55E).withValues(alpha: 0.14),
-                        tagColor: const Color(0xFF22C55E),
+                        iconColor: const Color(0xFF16A34A),
+                        bgColor: const Color(0xFFF0FDF4),
+                        tagColor: const Color(0xFF16A34A),
                         onTap: () => onSelectNotification('/history'),
                       ),
                     ],
@@ -871,9 +706,9 @@ class _NotificationPopoverCard extends StatelessWidget {
               ),
             ),
 
-            Divider(
+            const Divider(
               height: 1,
-              color: Colors.white.withValues(alpha: 0.10),
+              color: Color(0xFFE2E8F0),
             ),
 
             // 3. Compact Footer Actions
@@ -886,9 +721,9 @@ class _NotificationPopoverCard extends StatelessWidget {
                       height: 34,
                       child: OutlinedButton(
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.white70,
-                          side: BorderSide(
-                            color: Colors.white.withValues(alpha: 0.20),
+                          foregroundColor: const Color(0xFF475569),
+                          side: const BorderSide(
+                            color: Color(0xFFCBD5E1),
                           ),
                           padding: EdgeInsets.zero,
                           shape: RoundedRectangleBorder(
@@ -975,10 +810,10 @@ class _PopoverNotificationItem extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(9),
         decoration: BoxDecoration(
-          color: const Color(0xFF13203C),
+          color: const Color(0xFFF8FAF8),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: Colors.white.withValues(alpha: 0.08),
+            color: const Color(0xFFE2E8F0),
             width: 1,
           ),
         ),
@@ -1008,7 +843,7 @@ class _PopoverNotificationItem extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            color: Colors.white,
+                            color: Color(0xFF0F172A),
                             fontSize: 11.5,
                             fontWeight: FontWeight.w700,
                           ),
@@ -1021,10 +856,10 @@ class _PopoverNotificationItem extends StatelessWidget {
                           vertical: 1.5,
                         ),
                         decoration: BoxDecoration(
-                          color: tagColor.withValues(alpha: 0.18),
+                          color: tagColor.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(4),
                           border: Border.all(
-                            color: tagColor.withValues(alpha: 0.4),
+                            color: tagColor.withValues(alpha: 0.3),
                             width: 0.6,
                           ),
                         ),
@@ -1044,8 +879,8 @@ class _PopoverNotificationItem extends StatelessWidget {
                     subtitle,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.65),
+                    style: const TextStyle(
+                      color: Color(0xFF475569),
                       fontSize: 10.5,
                       height: 1.25,
                     ),
@@ -1053,8 +888,8 @@ class _PopoverNotificationItem extends StatelessWidget {
                   const SizedBox(height: 3),
                   Text(
                     time,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.4),
+                    style: const TextStyle(
+                      color: Color(0xFF94A3B8),
                       fontSize: 9.0,
                     ),
                   ),
@@ -1067,3 +902,4 @@ class _PopoverNotificationItem extends StatelessWidget {
     );
   }
 }
+

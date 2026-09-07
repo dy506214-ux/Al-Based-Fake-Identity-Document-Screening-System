@@ -132,7 +132,7 @@ void main() {
         expect(find.text('Good Morning,'), findsOneWidget);
         expect(find.text('Officer Sharma'), findsOneWidget);
         expect(find.byIcon(Icons.shield_outlined), findsOneWidget);
-        expect(find.byIcon(Icons.palette_rounded), findsOneWidget);
+        expect(find.byIcon(Icons.palette_rounded), findsNothing);
         expect(find.byTooltip('Notifications'), findsOneWidget);
         expect(find.byTooltip('Open navigation menu'), findsOneWidget);
         expect(tester.takeException(), isNull);
@@ -461,8 +461,8 @@ void main() {
     });
   });
 
-  group('Drawer Dynamic Hover & Vertical Active Theme Tests', () {
-    testWidgets('Drawer renders officer identity, 5 menu items, vertical theme, and logout', (tester) async {
+  group('Drawer Dynamic Hover & Single Normal Green Theme Tests', () {
+    testWidgets('Drawer renders officer identity, 5 menu items, no active theme section, and logout', (tester) async {
       await tester.pumpWidget(
         const ProviderScope(
           child: MaterialApp(
@@ -491,47 +491,15 @@ void main() {
       expect(find.text('Screening History'), findsOneWidget);
       expect(find.text('Officer Profile'), findsOneWidget);
 
-      // Verify Active Theme Header and Logout
-      expect(find.text('ACTIVE THEME'), findsOneWidget);
+      // Verify ACTIVE THEME section is REMOVED completely
+      expect(find.text('ACTIVE THEME'), findsNothing);
+      expect(find.text('Dark Blue'), findsNothing);
+      expect(find.text('Orange'), findsNothing);
+      expect(find.text('Sky Blue'), findsNothing);
+      expect(find.text('Red'), findsNothing);
+
+      // Verify Logout session button exists
       expect(find.text('LOGOUT SESSION'), findsOneWidget);
-
-      expect(tester.takeException(), isNull);
-    });
-
-    testWidgets('Active Theme options are rendered VERTICALLY in exact specified order', (tester) async {
-      await tester.pumpWidget(
-        const ProviderScope(
-          child: MaterialApp(
-            home: Scaffold(
-              drawer: AppNavigationDrawer(),
-              body: Center(child: Text('Main Content')),
-            ),
-          ),
-        ),
-      );
-
-      final state = tester.state<ScaffoldState>(find.byType(Scaffold));
-      state.openDrawer();
-      await tester.pumpAndSettle();
-
-      // Verify exact theme names present
-      expect(find.text('Dark Blue'), findsOneWidget);
-      expect(find.text('Orange'), findsOneWidget);
-      expect(find.text('Sky Blue'), findsOneWidget);
-      expect(find.text('Red'), findsOneWidget);
-      expect(find.text('Normal'), findsOneWidget);
-
-      // Verify VERTICAL top-to-bottom ordering: Dark Blue -> Orange -> Sky Blue -> Red -> Normal
-      final darkBlueY = tester.getTopLeft(find.text('Dark Blue')).dy;
-      final orangeY = tester.getTopLeft(find.text('Orange')).dy;
-      final skyBlueY = tester.getTopLeft(find.text('Sky Blue')).dy;
-      final redY = tester.getTopLeft(find.text('Red')).dy;
-      final normalY = tester.getTopLeft(find.text('Normal')).dy;
-
-      expect(darkBlueY < orangeY, isTrue, reason: 'Dark Blue must appear above Orange');
-      expect(orangeY < skyBlueY, isTrue, reason: 'Orange must appear above Sky Blue');
-      expect(skyBlueY < redY, isTrue, reason: 'Sky Blue must appear above Red');
-      expect(redY < normalY, isTrue, reason: 'Red must appear above Normal');
 
       expect(tester.takeException(), isNull);
     });
@@ -575,7 +543,7 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('Tapping vertical theme option changes global theme dynamically', (tester) async {
+    testWidgets('App theme provider remains locked to Normal Green theme', (tester) async {
       late WidgetRef capturedRef;
 
       await tester.pumpWidget(
@@ -594,38 +562,8 @@ void main() {
         ),
       );
 
-      final state = tester.state<ScaffoldState>(find.byType(Scaffold));
-      state.openDrawer();
-      await tester.pumpAndSettle();
-
-      // Default theme is normal
+      // Default and only theme is Normal Green
       expect(capturedRef.read(appThemeProvider), AppThemeMode.normal);
-
-      // Tap Dark Blue
-      await tester.tap(find.text('Dark Blue'));
-      await tester.pumpAndSettle();
-      expect(capturedRef.read(appThemeProvider), AppThemeMode.darkBlue);
-
-      // Tap Orange
-      await tester.tap(find.text('Orange'));
-      await tester.pumpAndSettle();
-      expect(capturedRef.read(appThemeProvider), AppThemeMode.orange);
-
-      // Tap Sky Blue
-      await tester.tap(find.text('Sky Blue'));
-      await tester.pumpAndSettle();
-      expect(capturedRef.read(appThemeProvider), AppThemeMode.skyBlue);
-
-      // Tap Red
-      await tester.tap(find.text('Red'));
-      await tester.pumpAndSettle();
-      expect(capturedRef.read(appThemeProvider), AppThemeMode.red);
-
-      // Tap Normal
-      await tester.tap(find.text('Normal'));
-      await tester.pumpAndSettle();
-      expect(capturedRef.read(appThemeProvider), AppThemeMode.normal);
-
       expect(tester.takeException(), isNull);
     });
 
@@ -651,7 +589,7 @@ void main() {
 
       expect(find.text('Officer Sharma'), findsOneWidget);
       expect(find.text('Dashboard'), findsOneWidget);
-      expect(find.text('Dark Blue'), findsOneWidget);
+      expect(find.text('ACTIVE THEME'), findsNothing);
       expect(tester.takeException(), isNull);
     });
   });

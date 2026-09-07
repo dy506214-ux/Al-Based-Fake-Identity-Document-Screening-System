@@ -46,14 +46,14 @@ class AppBottomNavbar extends ConsumerWidget {
             return Stack(
               clipBehavior: Clip.none,
               children: [
-                // 1. Futuristic Glassmorphic Background with Smooth Center Dome
+                // 1. Clean Light Background with Smooth Center Dome
                 Positioned.fill(
                   child: CustomPaint(
                     size: Size(barWidth, barHeight),
                     painter: NavBarBackgroundPainter(
-                      backgroundColor: currentTheme.headerBackground.withValues(alpha: 0.94),
-                      borderColor: currentTheme.accentColor.withValues(alpha: 0.72),
-                      glowColor: currentTheme.glowColor,
+                      backgroundColor: Colors.white.withValues(alpha: 0.98),
+                      borderColor: const Color(0xFFE2E8F0),
+                      glowColor: Colors.black.withValues(alpha: 0.04),
                     ),
                   ),
                 ),
@@ -158,27 +158,27 @@ class AppBottomNavbar extends ConsumerWidget {
               mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Squircle glass container for icon
+                // Squircle container for icon
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
                   width: isExtraSmall ? 32 : 36,
                   height: isExtraSmall ? 32 : 36,
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? theme.accentColor.withValues(alpha: 0.22)
-                        : Colors.white.withValues(alpha: 0.04),
+                        ? const Color(0xFFEAF6EC)
+                        : Colors.transparent,
                     borderRadius: BorderRadius.circular(isExtraSmall ? 10 : 12),
                     border: Border.all(
                       color: isSelected
-                          ? theme.accentColor.withValues(alpha: 0.75)
-                          : Colors.white.withValues(alpha: 0.09),
+                          ? theme.primaryColor.withValues(alpha: 0.6)
+                          : Colors.transparent,
                       width: 1.2,
                     ),
                     boxShadow: isSelected
                         ? [
                             BoxShadow(
-                              color: theme.accentColor.withValues(alpha: 0.35),
-                              blurRadius: 8,
+                              color: theme.primaryColor.withValues(alpha: 0.08),
+                              blurRadius: 6,
                             ),
                           ]
                         : null,
@@ -188,8 +188,8 @@ class AppBottomNavbar extends ConsumerWidget {
                       icon,
                       size: isExtraSmall ? 18 : 20,
                       color: isSelected
-                          ? theme.accentColor
-                          : Colors.white.withValues(alpha: 0.72),
+                          ? theme.primaryColor
+                          : const Color(0xFF64748B),
                     ),
                   ),
                 ),
@@ -202,28 +202,20 @@ class AppBottomNavbar extends ConsumerWidget {
                     fontSize: isExtraSmall ? 9.5 : 10.5,
                     fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                     color: isSelected
-                        ? theme.accentColor
-                        : Colors.white.withValues(alpha: 0.72),
+                        ? theme.primaryColor
+                        : const Color(0xFF64748B),
                     letterSpacing: 0.2,
                   ),
                 ),
                 const SizedBox(height: 2),
-                // Glowing active indicator bar
+                // Active indicator bar
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
                   width: isSelected ? (isExtraSmall ? 16 : 20) : 0,
                   height: 2.5,
                   decoration: BoxDecoration(
-                    color: isSelected ? theme.accentColor : Colors.transparent,
+                    color: isSelected ? theme.primaryColor : Colors.transparent,
                     borderRadius: BorderRadius.circular(2),
-                    boxShadow: isSelected
-                        ? [
-                            BoxShadow(
-                              color: theme.accentColor.withValues(alpha: 0.7),
-                              blurRadius: 5,
-                            ),
-                          ]
-                        : null,
                   ),
                 ),
               ],
@@ -289,14 +281,15 @@ class _ScreeningActionButtonState extends State<_ScreeningActionButton> {
                     shape: BoxShape.circle,
                     color: widget.theme.primaryColor,
                     border: Border.all(
-                      color: widget.theme.accentColor,
+                      color: Colors.white,
                       width: 2.0,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: widget.theme.accentColor.withValues(alpha: 0.65),
-                        blurRadius: 14,
-                        spreadRadius: 1,
+                        color: const Color(0x332F5D2A),
+                        blurRadius: 8,
+                        spreadRadius: 0,
+                        offset: const Offset(0, 3),
                       ),
                     ],
                   ),
@@ -333,8 +326,8 @@ class _ScreeningActionButtonState extends State<_ScreeningActionButton> {
                   fontSize: widget.isExtraSmall ? 9.5 : 10.5,
                   fontWeight: FontWeight.w700,
                   color: widget.isSelected
-                      ? widget.theme.accentColor
-                      : Colors.white,
+                      ? widget.theme.primaryColor
+                      : const Color(0xFF475569),
                   letterSpacing: 0.2,
                 ),
               ),
@@ -347,7 +340,7 @@ class _ScreeningActionButtonState extends State<_ScreeningActionButton> {
   }
 }
 
-/// Mathematically continuous, smooth CustomPainter for the navbar background with center dome
+/// CustomPainter for the navbar background with center dome
 class NavBarBackgroundPainter extends CustomPainter {
   final Color backgroundColor;
   final Color borderColor;
@@ -374,18 +367,16 @@ class NavBarBackgroundPainter extends CustomPainter {
     // 2. Line to dome start (cx - 40)
     path.lineTo(cx - 40, topY);
 
-    // 3. Mathematically strictly monotonic C1-smooth arch over the center screening button
-    // Left half: starts horizontally at topY, arches smoothly to peak at y = 0
+    // 3. C1-smooth arch over center screening button
     path.cubicTo(
-      cx - 22, topY, // CP1: horizontal start
-      cx - 18, 0,    // CP2: horizontal peak approach
-      cx, 0,         // Peak at cx, y=0
+      cx - 22, topY,
+      cx - 18, 0,
+      cx, 0,
     );
-    // Right half: leaves peak horizontally, lands smoothly at topY
     path.cubicTo(
-      cx + 18, 0,    // CP3: horizontal peak departure
-      cx + 22, topY, // CP4: horizontal landing approach
-      cx + 40, topY, // Land point
+      cx + 18, 0,
+      cx + 22, topY,
+      cx + 40, topY,
     );
 
     // 4. Line to top-right corner
@@ -426,23 +417,23 @@ class NavBarBackgroundPainter extends CustomPainter {
 
     path.close();
 
-    // Subtle soft glow shadow
+    // Soft subtle shadow
     final glowPaint = Paint()
       ..color = glowColor
-      ..maskFilter = const MaskFilter.blur(BlurStyle.outer, 10);
+      ..maskFilter = const MaskFilter.blur(BlurStyle.outer, 6);
     canvas.drawPath(path, glowPaint);
 
-    // Dark glass background
+    // Light surface fill
     final fillPaint = Paint()
       ..color = backgroundColor
       ..style = PaintingStyle.fill;
     canvas.drawPath(path, fillPaint);
 
-    // Neon accent border
+    // Border
     final borderPaint = Paint()
       ..color = borderColor
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.4;
+      ..strokeWidth = 1.0;
     canvas.drawPath(path, borderPaint);
   }
 
@@ -453,3 +444,4 @@ class NavBarBackgroundPainter extends CustomPainter {
         oldDelegate.glowColor != glowColor;
   }
 }
+

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -27,13 +28,109 @@ class NotificationNotifier extends Notifier<int> {
 class AppTopNavbar extends ConsumerStatefulWidget {
   const AppTopNavbar({super.key});
 
+  /// Computes the dynamic greeting string based on the given or current local time.
+  static String getGreeting([DateTime? time]) {
+    final now = time ?? DateTime.now();
+    final hour = now.hour;
+
+    if (hour >= 5 && hour < 12) {
+      return 'Good Morning,';
+    } else if (hour >= 12 && hour < 17) {
+      return 'Good Afternoon,';
+    } else if (hour >= 17 && hour < 21) {
+      return 'Good Evening,';
+    } else {
+      return 'Good Night,';
+    }
+  }
+
   @override
   ConsumerState<AppTopNavbar> createState() => _AppTopNavbarState();
 }
 
-class _AppTopNavbarState extends ConsumerState<AppTopNavbar> {
+class _AppTopNavbarState extends ConsumerState<AppTopNavbar>
+    with WidgetsBindingObserver {
   final GlobalKey _bellKey = GlobalKey();
   bool _isNotificationOpen = false;
+  late String _greeting;
+  Timer? _greetingTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _greeting = AppTopNavbar.getGreeting();
+    _scheduleNextGreetingTimer();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _updateGreeting();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _greetingTimer?.cancel();
+    super.dispose();
+  }
+
+  void _updateGreeting() {
+    final newGreeting = AppTopNavbar.getGreeting();
+    if (_greeting != newGreeting) {
+      if (mounted) {
+        setState(() {
+          _greeting = newGreeting;
+        });
+      }
+    } else {
+      _greeting = newGreeting;
+    }
+    _scheduleNextGreetingTimer();
+  }
+
+  void _scheduleNextGreetingTimer() {
+    _greetingTimer?.cancel();
+    final now = DateTime.now();
+    final duration = _getTimeUntilNextBoundary(now);
+    _greetingTimer = Timer(duration, () {
+      _updateGreeting();
+    });
+  }
+
+  static Duration _getTimeUntilNextBoundary(DateTime now) {
+    // Boundary hours: 5 (05:00 AM), 12 (12:00 PM), 17 (05:00 PM), 21 (09:00 PM)
+    final hour = now.hour;
+    int targetHour;
+    int addDays = 0;
+
+    if (hour < 5) {
+      targetHour = 5;
+    } else if (hour < 12) {
+      targetHour = 12;
+    } else if (hour < 17) {
+      targetHour = 17;
+    } else if (hour < 21) {
+      targetHour = 21;
+    } else {
+      targetHour = 5;
+      addDays = 1;
+    }
+
+    final targetTime = DateTime(
+      now.year,
+      now.month,
+      now.day + addDays,
+      targetHour,
+      0,
+      0,
+    );
+
+    final diff = targetTime.difference(now) + const Duration(milliseconds: 100);
+    return diff.isNegative ? const Duration(seconds: 1) : diff;
+  }
 
   void _openDrawer(BuildContext context) {
     Scaffold.of(context).openDrawer();
@@ -289,7 +386,7 @@ class _AppTopNavbarState extends ConsumerState<AppTopNavbar> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text(
-                                  'Good Morning,',
+                                  _greeting,
                                   maxLines: 1,
                                   style: TextStyle(
                                     color: const Color(0xFFA3C4AC),

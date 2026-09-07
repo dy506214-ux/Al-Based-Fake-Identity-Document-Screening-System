@@ -129,7 +129,7 @@ void main() {
 
         // Verify elements render properly
         expect(find.byType(AppTopNavbar), findsOneWidget);
-        expect(find.text('Good Morning,'), findsOneWidget);
+        expect(find.text(AppTopNavbar.getGreeting()), findsOneWidget);
         expect(find.text('Officer Sharma'), findsOneWidget);
         expect(find.byIcon(Icons.shield_outlined), findsOneWidget);
         expect(find.byIcon(Icons.palette_rounded), findsNothing);
@@ -138,6 +138,31 @@ void main() {
         expect(tester.takeException(), isNull);
       });
     }
+  });
+
+  group('Dynamic Real-Time Greeting Calculation Tests', () {
+    test('Correctly computes greeting for all 24-hour boundaries', () {
+      // 04:59 AM -> Good Night,
+      expect(AppTopNavbar.getGreeting(DateTime(2026, 9, 8, 4, 59)), 'Good Night,');
+      // 05:00 AM -> Good Morning,
+      expect(AppTopNavbar.getGreeting(DateTime(2026, 9, 8, 5, 0)), 'Good Morning,');
+      // 11:59 AM -> Good Morning,
+      expect(AppTopNavbar.getGreeting(DateTime(2026, 9, 8, 11, 59)), 'Good Morning,');
+      // 12:00 PM -> Good Afternoon,
+      expect(AppTopNavbar.getGreeting(DateTime(2026, 9, 8, 12, 0)), 'Good Afternoon,');
+      // 04:59 PM -> Good Afternoon,
+      expect(AppTopNavbar.getGreeting(DateTime(2026, 9, 8, 16, 59)), 'Good Afternoon,');
+      // 05:00 PM -> Good Evening,
+      expect(AppTopNavbar.getGreeting(DateTime(2026, 9, 8, 17, 0)), 'Good Evening,');
+      // 08:59 PM -> Good Evening,
+      expect(AppTopNavbar.getGreeting(DateTime(2026, 9, 8, 20, 59)), 'Good Evening,');
+      // 09:00 PM -> Good Night,
+      expect(AppTopNavbar.getGreeting(DateTime(2026, 9, 8, 21, 0)), 'Good Night,');
+      // 11:59 PM -> Good Night,
+      expect(AppTopNavbar.getGreeting(DateTime(2026, 9, 8, 23, 59)), 'Good Night,');
+      // 12:00 AM -> Good Night,
+      expect(AppTopNavbar.getGreeting(DateTime(2026, 9, 8, 0, 0)), 'Good Night,');
+    });
   });
 
   group('DashboardScreen Responsive & Content Tests', () {

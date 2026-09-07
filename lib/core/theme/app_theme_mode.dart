@@ -10,7 +10,7 @@ enum AppThemeMode {
   Color get swatchColor => const Color(0xFF16A34A);
   Color get primaryColor => const Color(0xFF2F5D2A); // Professional Green
   Color get accentColor => const Color(0xFF16A34A); // Clean Green Accent
-  Color get headerBackground => const Color(0xFFF2FAF3); // Light Green Header Surface
+  Color get headerBackground => const Color(0xFF173A22); // Deep Professional Green Header
 
   Color get glowColor {
     return const Color(0x1A16A34A);

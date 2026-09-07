@@ -46,14 +46,14 @@ class AppBottomNavbar extends ConsumerWidget {
             return Stack(
               clipBehavior: Clip.none,
               children: [
-                // 1. Clean Light Background with Smooth Center Dome
+                // 1. Deep Green Background with Smooth Center Dome
                 Positioned.fill(
                   child: CustomPaint(
                     size: Size(barWidth, barHeight),
                     painter: NavBarBackgroundPainter(
-                      backgroundColor: Colors.white.withValues(alpha: 0.98),
-                      borderColor: const Color(0xFFE2E8F0),
-                      glowColor: Colors.black.withValues(alpha: 0.04),
+                      backgroundColor: const Color(0xFF173A22), // Deep Navbar Green
+                      borderColor: const Color(0xFF2B5737),
+                      glowColor: Colors.black.withValues(alpha: 0.15),
                     ),
                   ),
                 ),
@@ -165,19 +165,19 @@ class AppBottomNavbar extends ConsumerWidget {
                   height: isExtraSmall ? 32 : 36,
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? const Color(0xFFEAF6EC)
+                        ? const Color(0xFF214B2D)
                         : Colors.transparent,
                     borderRadius: BorderRadius.circular(isExtraSmall ? 10 : 12),
                     border: Border.all(
                       color: isSelected
-                          ? theme.primaryColor.withValues(alpha: 0.6)
+                          ? const Color(0xFF4F8A5A)
                           : Colors.transparent,
                       width: 1.2,
                     ),
                     boxShadow: isSelected
                         ? [
                             BoxShadow(
-                              color: theme.primaryColor.withValues(alpha: 0.08),
+                              color: Colors.black.withValues(alpha: 0.10),
                               blurRadius: 6,
                             ),
                           ]
@@ -188,8 +188,8 @@ class AppBottomNavbar extends ConsumerWidget {
                       icon,
                       size: isExtraSmall ? 18 : 20,
                       color: isSelected
-                          ? theme.primaryColor
-                          : const Color(0xFF64748B),
+                          ? Colors.white
+                          : const Color(0xFFA3C4AC),
                     ),
                   ),
                 ),
@@ -202,8 +202,8 @@ class AppBottomNavbar extends ConsumerWidget {
                     fontSize: isExtraSmall ? 9.5 : 10.5,
                     fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                     color: isSelected
-                        ? theme.primaryColor
-                        : const Color(0xFF64748B),
+                        ? Colors.white
+                        : const Color(0xFFA3C4AC),
                     letterSpacing: 0.2,
                   ),
                 ),
@@ -214,7 +214,7 @@ class AppBottomNavbar extends ConsumerWidget {
                   width: isSelected ? (isExtraSmall ? 16 : 20) : 0,
                   height: 2.5,
                   decoration: BoxDecoration(
-                    color: isSelected ? theme.primaryColor : Colors.transparent,
+                    color: isSelected ? const Color(0xFF22C55E) : Colors.transparent,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -279,14 +279,14 @@ class _ScreeningActionButtonState extends State<_ScreeningActionButton> {
                   height: btnSize,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: widget.theme.primaryColor,
+                    color: const Color(0xFF2F5D2A),
                     border: Border.all(
-                      color: Colors.white,
-                      width: 2.0,
+                      color: const Color(0xFF4F8A5A),
+                      width: 1.5,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0x332F5D2A),
+                        color: Colors.black.withValues(alpha: 0.15),
                         blurRadius: 8,
                         spreadRadius: 0,
                         offset: const Offset(0, 3),
@@ -326,8 +326,8 @@ class _ScreeningActionButtonState extends State<_ScreeningActionButton> {
                   fontSize: widget.isExtraSmall ? 9.5 : 10.5,
                   fontWeight: FontWeight.w700,
                   color: widget.isSelected
-                      ? widget.theme.primaryColor
-                      : const Color(0xFF475569),
+                      ? Colors.white
+                      : const Color(0xFFA3C4AC),
                   letterSpacing: 0.2,
                 ),
               ),

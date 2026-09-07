@@ -407,15 +407,15 @@ class _LightStatCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: const Color(0xFFE2E8F0),
-          width: 1.0,
+          color: const Color(0xFFD8E3DA), // Subtle Green-Grey Card Border
+          width: 1.2,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
+            color: const Color(0x1216251B), // Soft Tactile Elevation Shadow
+            blurRadius: 10,
             spreadRadius: 0,
-            offset: const Offset(0, 2),
+            offset: const Offset(0, 3),
           ),
         ],
       ),
@@ -456,7 +456,7 @@ class _LightStatCard extends StatelessWidget {
                 ],
               ),
 
-              // Middle: Large Numeric Value
+              // Middle: Large Numeric Value (High Contrast Dark Charcoal-Green)
               FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.centerLeft,
@@ -465,13 +465,13 @@ class _LightStatCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: isExtraSmall ? 23 : 27,
                     fontWeight: FontWeight.w800,
-                    color: const Color(0xFF0F172A),
+                    color: const Color(0xFF16251B),
                     letterSpacing: -0.5,
                   ),
                 ),
               ),
 
-              // Metric Title
+              // Metric Title (Muted Green-Grey)
               Text(
                 title,
                 maxLines: 1,
@@ -479,7 +479,7 @@ class _LightStatCard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: isExtraSmall ? 11.5 : 13,
                   fontWeight: FontWeight.w600,
-                  color: const Color(0xFF64748B),
+                  color: const Color(0xFF526B59),
                 ),
               ),
 
@@ -503,7 +503,7 @@ class _LightStatCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: isExtraSmall ? 9.5 : 10.5,
                         fontWeight: FontWeight.w500,
-                        color: const Color(0xFF94A3B8),
+                        color: const Color(0xFF789080),
                       ),
                     ),
                   ),
@@ -716,15 +716,15 @@ class _OcrExtractionCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: const Color(0xFFE2E8F0),
+          color: const Color(0xFFD8E3DA),
           width: 1.2,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: const Color(0x1216251B),
             blurRadius: 10,
             spreadRadius: 0,
-            offset: const Offset(0, 2),
+            offset: const Offset(0, 3),
           ),
         ],
       ),
@@ -738,7 +738,7 @@ class _OcrExtractionCard extends StatelessWidget {
             child: CustomPaint(
               painter: _OcrGaugePainter(
                 percentage: 0.987,
-                trackColor: const Color(0xFFE2E8F0),
+                trackColor: const Color(0xFFE2EBE4),
                 activeColor: const Color(0xFF2F5D2A),
               ),
               child: Center(
@@ -747,7 +747,7 @@ class _OcrExtractionCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: isExtraSmall ? 12.5 : 14.5,
                     fontWeight: FontWeight.w800,
-                    color: const Color(0xFF0F172A),
+                    color: const Color(0xFF16251B),
                   ),
                 ),
               ),
@@ -767,7 +767,7 @@ class _OcrExtractionCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: isExtraSmall ? 14.5 : 16,
                     fontWeight: FontWeight.w800,
-                    color: const Color(0xFF0F172A),
+                    color: const Color(0xFF16251B),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -776,7 +776,7 @@ class _OcrExtractionCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: isExtraSmall ? 10.5 : 12,
                     fontWeight: FontWeight.w400,
-                    color: const Color(0xFF64748B),
+                    color: const Color(0xFF526B59),
                     height: 1.35,
                   ),
                 ),
@@ -903,12 +903,12 @@ class _RecentScreeningCardLight extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: const Color(0xFFE2E8F0),
+            color: const Color(0xFFD8E3DA),
             width: 1,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.02),
+              color: const Color(0x0F16251B),
               blurRadius: 6,
               offset: const Offset(0, 2),
             ),
@@ -950,7 +950,7 @@ class _RecentScreeningCardLight extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 13.5,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF0F172A),
+                      color: Color(0xFF16251B),
                     ),
                   ),
                   const SizedBox(height: 3),
@@ -958,7 +958,7 @@ class _RecentScreeningCardLight extends StatelessWidget {
                     docId,
                     style: const TextStyle(
                       fontSize: 11.5,
-                      color: Color(0xFF64748B),
+                      color: Color(0xFF526B59),
                     ),
                   ),
                 ],

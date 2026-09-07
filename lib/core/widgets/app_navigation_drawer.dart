@@ -46,10 +46,10 @@ class _AppNavigationDrawerState extends ConsumerState<AppNavigationDrawer> {
               width: double.infinity,
               padding: const EdgeInsets.all(20),
               decoration: const BoxDecoration(
-                color: Color(0xFFF2FAF3),
+                color: Color(0xFF173A22), // Deep Professional Green Drawer Header
                 border: Border(
                   bottom: BorderSide(
-                    color: Color(0xFFE2E8F0),
+                    color: Color(0xFF2B5737),
                     width: 1.5,
                   ),
                 ),
@@ -61,24 +61,24 @@ class _AppNavigationDrawerState extends ConsumerState<AppNavigationDrawer> {
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFEAF6EC),
+                      color: const Color(0xFF214B2D),
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                        color: theme.primaryColor,
+                        color: const Color(0xFF4F8A5A),
                         width: 1.5,
                       ),
                     ),
-                    child: Stack(
+                    child: const Stack(
                       alignment: Alignment.center,
                       children: [
                         Icon(
                           Icons.shield_outlined,
-                          color: theme.primaryColor,
+                          color: Color(0xFF22C55E),
                           size: 30,
                         ),
                         Icon(
                           Icons.person,
-                          color: theme.primaryColor,
+                          color: Colors.white,
                           size: 16,
                         ),
                       ],
@@ -89,35 +89,35 @@ class _AppNavigationDrawerState extends ConsumerState<AppNavigationDrawer> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
+                        const Text(
                           'Officer Sharma',
                           style: TextStyle(
-                            color: Color(0xFF0F172A),
+                            color: Colors.white,
                             fontSize: 16,
                             fontWeight: FontWeight.w800,
                             letterSpacing: 0.3,
                           ),
                         ),
-                        SizedBox(height: 3),
+                        const SizedBox(height: 3),
                         Row(
                           children: [
                             Container(
                               width: 6,
                               height: 6,
-                              decoration: BoxDecoration(
-                                color: Color(0xFF16A34A),
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF22C55E),
                                 shape: BoxShape.circle,
                               ),
                             ),
-                            SizedBox(width: 6),
-                            Expanded(
+                            const SizedBox(width: 6),
+                            const Expanded(
                               child: FittedBox(
                                 fit: BoxFit.scaleDown,
                                 alignment: Alignment.centerLeft,
                                 child: Text(
                                   'OFC-2024-0847 • Active',
                                   style: TextStyle(
-                                    color: Color(0xFF15803D),
+                                    color: Color(0xFF86EFAC),
                                     fontSize: 11,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -126,14 +126,14 @@ class _AppNavigationDrawerState extends ConsumerState<AppNavigationDrawer> {
                             ),
                           ],
                         ),
-                        SizedBox(height: 2),
-                        FittedBox(
+                        const SizedBox(height: 2),
+                        const FittedBox(
                           fit: BoxFit.scaleDown,
                           alignment: Alignment.centerLeft,
                           child: Text(
                             'Authorized Officer Console',
                             style: TextStyle(
-                              color: Color(0xFF64748B),
+                              color: Color(0xFFA3C4AC),
                               fontSize: 10,
                             ),
                           ),

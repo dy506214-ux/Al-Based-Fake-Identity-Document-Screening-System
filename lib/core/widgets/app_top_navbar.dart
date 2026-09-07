@@ -188,18 +188,18 @@ class _AppTopNavbarState extends ConsumerState<AppTopNavbar> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: const Color(0xFFF2FAF3),
+        color: const Color(0xFF173A22), // Deep Professional Green Navbar
         border: const Border(
           bottom: BorderSide(
-            color: Color(0xFFE2E8F0),
+            color: Color(0xFF2B5737),
             width: 1.0,
           ),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: Colors.black.withValues(alpha: 0.15),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
@@ -234,15 +234,15 @@ class _AppTopNavbarState extends ConsumerState<AppTopNavbar> {
                           vertical: pillVertPadding,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: const Color(0xFF214B2D), // Officer Container Surface
                           borderRadius: BorderRadius.circular(32),
                           border: Border.all(
-                            color: theme.accentColor.withValues(alpha: 0.35),
+                            color: const Color(0xFF4F8A5A),
                             width: 1.2,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.03),
+                              color: Colors.black.withValues(alpha: 0.10),
                               blurRadius: 6,
                               spreadRadius: 0,
                             ),
@@ -256,11 +256,11 @@ class _AppTopNavbarState extends ConsumerState<AppTopNavbar> {
                               width: badgeSize,
                               height: badgeSize,
                               decoration: BoxDecoration(
-                                color: const Color(0xFFEAF6EC),
+                                color: const Color(0xFF173A22),
                                 borderRadius: BorderRadius.circular(
                                     isExtraSmall ? 8 : 12),
                                 border: Border.all(
-                                  color: theme.primaryColor,
+                                  color: const Color(0xFF4F8A5A),
                                   width: 1.3,
                                 ),
                               ),
@@ -269,12 +269,12 @@ class _AppTopNavbarState extends ConsumerState<AppTopNavbar> {
                                 children: [
                                   Icon(
                                     Icons.shield_outlined,
-                                    color: theme.primaryColor,
+                                    color: const Color(0xFF22C55E),
                                     size: shieldIconSize,
                                   ),
                                   Icon(
                                     Icons.person,
-                                    color: theme.primaryColor,
+                                    color: Colors.white,
                                     size: personIconSize,
                                   ),
                                 ],
@@ -292,7 +292,7 @@ class _AppTopNavbarState extends ConsumerState<AppTopNavbar> {
                                   'Good Morning,',
                                   maxLines: 1,
                                   style: TextStyle(
-                                    color: const Color(0xFF64748B),
+                                    color: const Color(0xFFA3C4AC),
                                     fontSize: greetingFontSize,
                                     fontWeight: FontWeight.w500,
                                     letterSpacing: 0.2,
@@ -303,7 +303,7 @@ class _AppTopNavbarState extends ConsumerState<AppTopNavbar> {
                                   'Officer Sharma',
                                   maxLines: 1,
                                   style: TextStyle(
-                                    color: const Color(0xFF0F172A),
+                                    color: Colors.white,
                                     fontSize: nameFontSize,
                                     fontWeight: FontWeight.w800,
                                     letterSpacing: 0.3,
@@ -317,7 +317,7 @@ class _AppTopNavbarState extends ConsumerState<AppTopNavbar> {
                                       width: isExtraSmall ? 4.5 : 5.5,
                                       height: isExtraSmall ? 4.5 : 5.5,
                                       decoration: const BoxDecoration(
-                                        color: Color(0xFF16A34A),
+                                        color: Color(0xFF22C55E),
                                         shape: BoxShape.circle,
                                       ),
                                     ),
@@ -326,7 +326,7 @@ class _AppTopNavbarState extends ConsumerState<AppTopNavbar> {
                                       'OFC-2024-0847 • Active',
                                       maxLines: 1,
                                       style: TextStyle(
-                                        color: const Color(0xFF15803D),
+                                        color: const Color(0xFF86EFAC),
                                         fontSize: statusFontSize,
                                         fontWeight: FontWeight.w700,
                                         letterSpacing: 0.2,
@@ -371,15 +371,15 @@ class _AppTopNavbarState extends ConsumerState<AppTopNavbar> {
             height: size,
             constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: const Color(0xFF214B2D),
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: const Color(0xFFCBD5E1),
+                color: const Color(0xFF4F8A5A),
                 width: 1.0,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.03),
+                  color: Colors.black.withValues(alpha: 0.10),
                   blurRadius: 4,
                 ),
               ],
@@ -392,7 +392,7 @@ class _AppTopNavbarState extends ConsumerState<AppTopNavbar> {
                     width: size > 40 ? 18 : 16,
                     height: 2.2,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1E293B),
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -401,7 +401,7 @@ class _AppTopNavbarState extends ConsumerState<AppTopNavbar> {
                     width: size > 40 ? 18 : 16,
                     height: 2.2,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1E293B),
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -410,7 +410,7 @@ class _AppTopNavbarState extends ConsumerState<AppTopNavbar> {
                     width: size > 40 ? 18 : 16,
                     height: 2.2,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1E293B),
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -439,19 +439,15 @@ class _AppTopNavbarState extends ConsumerState<AppTopNavbar> {
             height: size,
             constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
             decoration: BoxDecoration(
-              color: _isNotificationOpen
-                  ? const Color(0xFFEAF6EC)
-                  : Colors.white,
+              color: const Color(0xFF214B2D),
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: _isNotificationOpen
-                    ? theme.primaryColor
-                    : const Color(0xFFCBD5E1),
+                color: const Color(0xFF4F8A5A),
                 width: 1.2,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.03),
+                  color: Colors.black.withValues(alpha: 0.10),
                   blurRadius: 4,
                 ),
               ],
@@ -464,9 +460,7 @@ class _AppTopNavbarState extends ConsumerState<AppTopNavbar> {
                     _isNotificationOpen
                         ? Icons.notifications_active_rounded
                         : Icons.notifications_none_rounded,
-                    color: _isNotificationOpen
-                        ? theme.primaryColor
-                        : const Color(0xFF334155),
+                    color: Colors.white,
                     size: isExtraSmall ? 19 : 22,
                   ),
                 ),
@@ -485,7 +479,7 @@ class _AppTopNavbarState extends ConsumerState<AppTopNavbar> {
                         color: const Color(0xFFEF4444),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                          color: Colors.white,
+                          color: const Color(0xFF173A22),
                           width: 1.2,
                         ),
                         boxShadow: [

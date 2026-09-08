@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:camera/camera.dart';
@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme_controller.dart';
 import '../../../core/widgets/app_bottom_navbar.dart';
+import '../../../core/widgets/app_platform_image.dart';
 import '../../dashboard/data/dashboard_repository.dart';
 import '../../history/data/history_repository.dart';
 import '../data/document_quality_service.dart';
@@ -33,6 +34,7 @@ class FaceVerificationScreen extends ConsumerStatefulWidget {
 class _FaceVerificationScreenState extends ConsumerState<FaceVerificationScreen> {
   final ImagePicker _imagePicker = ImagePicker();
   XFile? _capturedFaceFile;
+  Uint8List? _capturedFaceBytes;
   bool _isProcessing = false;
 
   Future<void> _takeLivePhoto() async {
@@ -64,8 +66,11 @@ class _FaceVerificationScreenState extends ConsumerState<FaceVerificationScreen>
       );
 
       if (captured != null && mounted) {
+        final bytes = await captured.readAsBytes();
+        if (!mounted) return;
         setState(() {
           _capturedFaceFile = captured;
+          _capturedFaceBytes = bytes;
         });
       }
     } catch (e) {
@@ -90,8 +95,12 @@ class _FaceVerificationScreenState extends ConsumerState<FaceVerificationScreen>
 
       if (file == null || !mounted) return;
 
+      final bytes = await file.readAsBytes();
+      if (!mounted) return;
+
       setState(() {
         _capturedFaceFile = file;
+        _capturedFaceBytes = bytes;
       });
     } catch (e) {
       if (!mounted) return;
@@ -107,6 +116,7 @@ class _FaceVerificationScreenState extends ConsumerState<FaceVerificationScreen>
   void _retakeFace() {
     setState(() {
       _capturedFaceFile = null;
+      _capturedFaceBytes = null;
     });
   }
 
@@ -674,9 +684,17 @@ class _FaceVerificationScreenState extends ConsumerState<FaceVerificationScreen>
                 ),
               ),
               child: ClipOval(
-                child: Image.file(
-                  File(face.path),
+                child: AppPlatformImage(
+                  bytes: _capturedFaceBytes,
+                  file: face,
                   fit: BoxFit.cover,
+                  width: 90,
+                  height: 90,
+                  placeholder: const Icon(
+                    Icons.person_rounded,
+                    size: 40,
+                    color: Color(0xFF475569),
+                  ),
                 ),
               ),
             ),
@@ -1003,11 +1021,28 @@ class _LiveFaceCameraDialogState extends State<_LiveFaceCameraDialog> {
 
   @override
   void dispose() {
-    _controller?.dispose();
+    _disposeCamera();
     super.dispose();
   }
 
+  Future<void> _disposeCamera() async {
+    final ctrl = _controller;
+    _controller = null;
+    _isInit = false;
+    if (ctrl != null) {
+      try {
+        await ctrl.dispose();
+      } catch (_) {}
+    }
+  }
+
   Future<void> _initCamera() async {
+    await _disposeCamera();
+    if (!mounted) return;
+    setState(() {
+      _error = null;
+    });
+
     try {
       // Prioritize front/selfie camera for face verification
       final frontCamera = widget.availableCameras.firstWhere(
@@ -1019,7 +1054,7 @@ class _LiveFaceCameraDialogState extends State<_LiveFaceCameraDialog> {
         frontCamera,
         ResolutionPreset.high,
         enableAudio: false,
-        imageFormatGroup: ImageFormatGroup.jpeg,
+        imageFormatGroup: kIsWeb ? null : ImageFormatGroup.jpeg,
       );
 
       _controller = ctrl;

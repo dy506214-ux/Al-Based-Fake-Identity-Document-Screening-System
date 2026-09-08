@@ -1,20 +1,23 @@
-import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme_controller.dart';
 import '../../../core/widgets/app_bottom_navbar.dart';
+import '../../../core/widgets/app_platform_image.dart';
 import '../data/document_quality_service.dart';
 import '../data/document_repository.dart';
 
 class DocumentPreviewScreen extends ConsumerStatefulWidget {
   final XFile? capturedFile;
+  final Uint8List? capturedBytes;
   final String selectedDocType;
 
   const DocumentPreviewScreen({
     super.key,
     required this.capturedFile,
+    this.capturedBytes,
     required this.selectedDocType,
   });
 
@@ -29,6 +32,7 @@ class _DocumentPreviewScreenState extends ConsumerState<DocumentPreviewScreen> {
       TransformationController();
 
   DocumentQualityReport? _qualityReport;
+  Uint8List? _imageBytes;
   bool _isAnalyzing = true;
   bool _isSubmitting = false;
   int _rotationQuarterTurns = 0;
@@ -37,6 +41,7 @@ class _DocumentPreviewScreenState extends ConsumerState<DocumentPreviewScreen> {
   @override
   void initState() {
     super.initState();
+    _imageBytes = widget.capturedBytes;
     _analyzeImage();
   }
 
@@ -48,7 +53,7 @@ class _DocumentPreviewScreenState extends ConsumerState<DocumentPreviewScreen> {
 
   Future<void> _analyzeImage() async {
     final file = widget.capturedFile;
-    if (file == null) {
+    if (file == null && _imageBytes == null) {
       if (mounted) {
         setState(() {
           _isAnalyzing = false;
@@ -58,12 +63,28 @@ class _DocumentPreviewScreenState extends ConsumerState<DocumentPreviewScreen> {
     }
 
     try {
-      final report = await _qualityService.analyzeDocument(file);
-      if (!mounted) return;
-      setState(() {
-        _qualityReport = report;
-        _isAnalyzing = false;
-      });
+      if (_imageBytes == null && file != null) {
+        final bytes = await file.readAsBytes();
+        if (mounted) {
+          setState(() {
+            _imageBytes = bytes;
+          });
+        }
+      }
+
+      if (file != null) {
+        final report = await _qualityService.analyzeDocument(file);
+        if (!mounted) return;
+        setState(() {
+          _qualityReport = report;
+          _isAnalyzing = false;
+        });
+      } else {
+        if (!mounted) return;
+        setState(() {
+          _isAnalyzing = false;
+        });
+      }
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -114,8 +135,9 @@ class _DocumentPreviewScreenState extends ConsumerState<DocumentPreviewScreen> {
                         maxScale: 5.0,
                         child: RotatedBox(
                           quarterTurns: fullscreenTurns,
-                          child: Image.file(
-                            File(file.path),
+                          child: AppPlatformImage(
+                            bytes: _imageBytes,
+                            file: file,
                             fit: BoxFit.contain,
                           ),
                         ),
@@ -256,6 +278,7 @@ class _DocumentPreviewScreenState extends ConsumerState<DocumentPreviewScreen> {
           'documentId': docId,
           'selectedDocType': widget.selectedDocType,
           'documentFile': file,
+          'documentBytes': _imageBytes,
           'documentQuality': _qualityReport,
         },
       );
@@ -536,7 +559,7 @@ class _DocumentPreviewScreenState extends ConsumerState<DocumentPreviewScreen> {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
-        child: file != null
+        child: (file != null || _imageBytes != null)
             ? InteractiveViewer(
                 transformationController: _transformationController,
                 minScale: 1.0,
@@ -544,10 +567,12 @@ class _DocumentPreviewScreenState extends ConsumerState<DocumentPreviewScreen> {
                 child: Center(
                   child: RotatedBox(
                     quarterTurns: _rotationQuarterTurns,
-                    child: Image.file(
-                      File(file.path),
+                    child: AppPlatformImage(
+                      bytes: _imageBytes,
+                      file: file,
                       fit: BoxFit.contain,
-                      errorBuilder: (ctx, error, stackTrace) => _buildImagePlaceholder(),
+                      errorBuilder: (ctx, error, stackTrace) =>
+                          _buildImagePlaceholder(),
                     ),
                   ),
                 ),

@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -9,6 +10,7 @@ import 'package:document_screening/core/widgets/app_navigation_drawer.dart';
 import 'package:document_screening/core/widgets/app_pull_to_refresh.dart';
 import 'package:document_screening/core/widgets/app_top_navbar.dart';
 import 'package:document_screening/core/widgets/app_bottom_navbar.dart';
+import 'package:document_screening/core/widgets/app_platform_image.dart';
 import 'package:document_screening/features/dashboard/data/dashboard_repository.dart';
 import 'package:document_screening/features/dashboard/presentation/dashboard_screen.dart';
 import 'package:document_screening/features/documents/data/document_quality_service.dart';
@@ -775,6 +777,74 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   });
+
+  group('Cross-Platform Image Pipeline & Web Compatibility Tests', () {
+    final testPngBytes = Uint8List.fromList([
+      0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+      0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+      0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+      0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4,
+      0x89, 0x00, 0x00, 0x00, 0x0A, 0x49, 0x44, 0x41,
+      0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00,
+      0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00,
+      0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE,
+      0x42, 0x60, 0x82,
+    ]);
+
+    testWidgets('AppPlatformImage renders from Uint8List memory bytes without Image.file', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: AppPlatformImage(
+              bytes: testPngBytes,
+              fit: BoxFit.contain,
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+      expect(find.byType(Image), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('DocumentPreviewScreen safely renders with preloaded capturedBytes without crashing', (tester) async {
+      tester.view.physicalSize = const Size(390 * 2, 844 * 2);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            home: DocumentPreviewScreen(
+              capturedFile: null,
+              capturedBytes: testPngBytes,
+              selectedDocType: 'Passport',
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Verify Document Preview UI is displayed
+      expect(find.text('DOCUMENT PREVIEW'), findsOneWidget);
+      expect(find.text('Step 3 of 8 · Verify image quality'), findsOneWidget);
+      expect(find.text('CAPTURED DOCUMENT'), findsOneWidget);
+      expect(find.byType(AppPlatformImage), findsOneWidget);
+
+      // Verify Rotate button cycles without errors
+      await tester.tap(find.text('Rotate'));
+      await tester.pumpAndSettle();
+
+      // Verify Zoom button cycles without errors
+      await tester.tap(find.text('Zoom'));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+    });
+  });
 }
+
 
 

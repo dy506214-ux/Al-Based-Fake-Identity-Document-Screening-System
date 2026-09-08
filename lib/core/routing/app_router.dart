@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -55,9 +56,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (BuildContext context, GoRouterState state) {
           final extra = state.extra as Map<String, dynamic>? ?? {};
           final file = extra['file'] as XFile?;
+          final bytes = extra['bytes'] as Uint8List?;
           final docType = extra['docType'] as String? ?? 'Passport';
           return DocumentPreviewScreen(
             capturedFile: file,
+            capturedBytes: bytes,
             selectedDocType: docType,
           );
         },

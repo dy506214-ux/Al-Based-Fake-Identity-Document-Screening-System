@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:camera/camera.dart';
@@ -75,6 +76,9 @@ class _DocumentCaptureScreenState extends ConsumerState<DocumentCaptureScreen>
       _cameraError = null;
     });
 
+    // Ensure any previously open controller is safely disposed before recreating
+    await _disposeCamera();
+
     try {
       _availableCameras = await availableCameras();
       if (_availableCameras.isEmpty) {
@@ -96,7 +100,7 @@ class _DocumentCaptureScreenState extends ConsumerState<DocumentCaptureScreen>
         backCamera,
         ResolutionPreset.high,
         enableAudio: false,
-        imageFormatGroup: ImageFormatGroup.jpeg,
+        imageFormatGroup: kIsWeb ? null : ImageFormatGroup.jpeg,
       );
 
       _cameraController = controller;
@@ -187,6 +191,7 @@ class _DocumentCaptureScreenState extends ConsumerState<DocumentCaptureScreen>
 
     try {
       final file = await controller.takePicture();
+      final bytes = await file.readAsBytes();
       if (!mounted) return;
 
       setState(() {
@@ -197,6 +202,7 @@ class _DocumentCaptureScreenState extends ConsumerState<DocumentCaptureScreen>
         '/preview',
         extra: {
           'file': file,
+          'bytes': bytes,
           'docType': widget.selectedDocType,
         },
       );
@@ -215,6 +221,8 @@ class _DocumentCaptureScreenState extends ConsumerState<DocumentCaptureScreen>
   }
 
   Future<void> _pickFromGallery() async {
+    if (_isCapturing) return;
+
     try {
       final file = await _imagePicker.pickImage(
         source: ImageSource.gallery,
@@ -223,10 +231,14 @@ class _DocumentCaptureScreenState extends ConsumerState<DocumentCaptureScreen>
 
       if (file == null || !mounted) return;
 
+      final bytes = await file.readAsBytes();
+      if (!mounted) return;
+
       await context.push<bool>(
         '/preview',
         extra: {
           'file': file,
+          'bytes': bytes,
           'docType': widget.selectedDocType,
         },
       );
@@ -524,7 +536,7 @@ class _DocumentCaptureScreenState extends ConsumerState<DocumentCaptureScreen>
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              onPressed: _initializeCamera,
+              onPressed: _isCameraLoading ? null : _initializeCamera,
               icon: const Icon(Icons.refresh_rounded, size: 16),
               label: const Text(
                 'Retry Camera',

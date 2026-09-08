@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import '../../../core/network/api_exceptions.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,6 +11,7 @@ import '../../../core/widgets/app_bottom_navbar.dart';
 import '../../../core/widgets/app_platform_image.dart';
 import '../../dashboard/data/dashboard_repository.dart';
 import '../../history/data/history_repository.dart';
+import '../../history/presentation/history_screen.dart';
 import '../data/document_quality_service.dart';
 import '../data/document_repository.dart';
 
@@ -195,6 +197,39 @@ class _FaceVerificationScreenState extends ConsumerState<FaceVerificationScreen>
       // 2. Run full AI screening & biometric comparison
       final result = await repo.processDocument(widget.documentId);
 
+      // Record real screened case in session history & dashboard
+      final shortId = widget.documentId.length > 8
+          ? 'SCR-${widget.documentId.substring(widget.documentId.length - 4).toUpperCase()}'
+          : widget.documentId;
+      final isHigh = result.riskLevel.toUpperCase() == 'CRITICAL' || result.riskLevel.toUpperCase() == 'HIGH';
+
+      HistoryRepository.recordScreenedCase(
+        HistoryCaseModel(
+          id: shortId,
+          name: '${widget.selectedDocType} Scan',
+          docType: widget.selectedDocType,
+          dateTime: 'Just now',
+          risk: '${result.riskLevel.toUpperCase()} RISK',
+          status: result.reviewStatus.toUpperCase() == 'APPROVED' ? 'Completed' : 'Pending',
+          riskBgColor: isHigh ? const Color(0xFFFEE2E2) : const Color(0xFFDCFCE7),
+          riskTextColor: isHigh ? const Color(0xFFDC2626) : const Color(0xFF15803D),
+          statusBgColor: const Color(0xFFDCFCE7),
+          statusTextColor: const Color(0xFF15803D),
+          confidence: '${(100 - result.riskScore).clamp(40, 99)}%',
+        ),
+      );
+
+      DashboardRepository.recordRecentScreening(
+        DashboardRecentItem(
+          id: shortId,
+          name: '${widget.selectedDocType} Scan',
+          type: widget.selectedDocType,
+          date: 'Just now',
+          status: result.reviewStatus.toUpperCase() == 'APPROVED' ? 'Completed' : 'Pending',
+          isHighRisk: isHigh,
+        ),
+      );
+
       // Refresh stats & history
       ref.invalidate(dashboardStatsProvider);
       ref.invalidate(historyCasesProvider);
@@ -216,30 +251,9 @@ class _FaceVerificationScreenState extends ConsumerState<FaceVerificationScreen>
         _isProcessing = false;
       });
 
-      String userMessage = 'Unable to complete identity verification. Please try again.';
-      bool isSessionExpired = false;
-
-      if (e is DioException) {
-        if (e.response?.statusCode == 401) {
-          userMessage = 'Session expired. Please sign in again.';
-          isSessionExpired = true;
-        } else if (e.response?.statusCode == 413) {
-          userMessage = 'Face photo file is too large. Please retake.';
-        } else if (e.response?.statusCode == 429) {
-          userMessage = 'Too many requests. Please wait a moment and try again.';
-        } else if (e.response?.data is Map && e.response?.data['message'] != null) {
-          userMessage = e.response!.data['message'].toString();
-        } else if (e.type == DioExceptionType.connectionTimeout ||
-            e.type == DioExceptionType.receiveTimeout ||
-            e.type == DioExceptionType.connectionError) {
-          userMessage = 'Unable to reach screening server. Please check your internet connection.';
-        }
-      } else {
-        final cleanMsg = e.toString().replaceAll('Exception: ', '').trim();
-        if (cleanMsg.isNotEmpty && !cleanMsg.contains('DioException')) {
-          userMessage = cleanMsg;
-        }
-      }
+      final userMessage = ApiException.extractUserMessage(e);
+      final bool isSessionExpired = e is UnauthorizedException ||
+          (e is DioException && e.response?.statusCode == 401);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

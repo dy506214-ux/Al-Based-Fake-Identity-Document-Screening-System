@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/network/api_exceptions.dart';
 import '../data/auth_repository_impl.dart';
 import '../domain/auth_repository.dart';
 
@@ -50,17 +51,22 @@ class AuthController extends Notifier<AuthState> {
         state = state.copyWith(status: AuthStateStatus.unauthenticated);
       }
     } catch (e) {
-      state = state.copyWith(status: AuthStateStatus.error, errorMessage: e.toString());
+      final message = ApiException.extractUserMessage(e);
+      state = state.copyWith(status: AuthStateStatus.error, errorMessage: message);
     }
   }
 
   Future<void> login(String email, String password) async {
+    // Guard against duplicate rapid clicks while a login request is already in-flight
+    if (state.status == AuthStateStatus.loading) return;
+
     state = state.copyWith(status: AuthStateStatus.loading, errorMessage: null);
     try {
       await _authRepository.login(email, password);
       state = state.copyWith(status: AuthStateStatus.authenticated);
     } catch (e) {
-      state = state.copyWith(status: AuthStateStatus.error, errorMessage: e.toString());
+      final message = ApiException.extractUserMessage(e);
+      state = state.copyWith(status: AuthStateStatus.error, errorMessage: message);
     }
   }
 
@@ -70,7 +76,8 @@ class AuthController extends Notifier<AuthState> {
       await _authRepository.logout();
       state = state.copyWith(status: AuthStateStatus.unauthenticated);
     } catch (e) {
-      state = state.copyWith(status: AuthStateStatus.error, errorMessage: e.toString());
+      final message = ApiException.extractUserMessage(e);
+      state = state.copyWith(status: AuthStateStatus.error, errorMessage: message);
     }
   }
 }

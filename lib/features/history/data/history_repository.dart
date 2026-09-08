@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_endpoints.dart';
+import '../../../core/network/api_exceptions.dart';
 import '../presentation/history_screen.dart';
 
 final historyRepositoryProvider = Provider<HistoryRepository>((ref) {
@@ -17,8 +18,14 @@ final historyCasesProvider = FutureProvider<List<HistoryCaseModel>>((ref) async 
 
 class HistoryRepository {
   final ApiClient _apiClient;
+  static final List<HistoryCaseModel> _sessionCases = [];
 
   HistoryRepository(this._apiClient);
+
+  static void recordScreenedCase(HistoryCaseModel newCase) {
+    _sessionCases.removeWhere((c) => c.id == newCase.id);
+    _sessionCases.insert(0, newCase);
+  }
 
   Future<List<HistoryCaseModel>> fetchHistoryCases() async {
     try {
@@ -30,17 +37,20 @@ class HistoryRepository {
       if (response.data != null && response.data['success'] == true) {
         final docs = response.data['documents'] as List<dynamic>?;
         if (docs != null && docs.isNotEmpty) {
-          return docs.map((d) => _mapBackendDocToCase(d as Map<String, dynamic>)).toList();
+          final serverCases = docs.map((d) => _mapBackendDocToCase(d as Map<String, dynamic>)).toList();
+          return [..._sessionCases, ...serverCases];
         }
       }
+    } on ApiException {
+      // Safe fallback if offline, backend cold standby, or OFFICER role 403 on admin endpoint
     } on DioException {
-      // Safe fallback if offline or backend sleeping
+      // Safe fallback
     } catch (_) {
       // Safe fallback
     }
 
-    // Default approved cases fallback
-    return _defaultCases;
+    // Return session screened cases combined with baseline history
+    return [..._sessionCases, ..._defaultCases];
   }
 
   HistoryCaseModel _mapBackendDocToCase(Map<String, dynamic> doc) {

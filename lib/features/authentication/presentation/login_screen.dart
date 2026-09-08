@@ -37,6 +37,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   }
 
   void _handleLogin() {
+    if (ref.read(authControllerProvider).status == AuthStateStatus.loading) return;
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
     if (email.isNotEmpty && password.isNotEmpty) {

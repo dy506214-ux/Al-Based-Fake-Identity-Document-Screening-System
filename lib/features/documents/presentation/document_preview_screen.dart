@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import '../../../core/network/api_exceptions.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -291,30 +292,9 @@ class _DocumentPreviewScreenState extends ConsumerState<DocumentPreviewScreen> {
         _isSubmitting = false;
       });
 
-      String userMessage = 'Unable to upload document. Please try again.';
-      bool isSessionExpired = false;
-
-      if (e is DioException) {
-        if (e.response?.statusCode == 401) {
-          userMessage = 'Session expired. Please sign in again.';
-          isSessionExpired = true;
-        } else if (e.response?.statusCode == 413) {
-          userMessage = 'Document image file is too large. Please retake.';
-        } else if (e.response?.statusCode == 429) {
-          userMessage = 'Too many requests. Please wait a moment and try again.';
-        } else if (e.response?.data is Map && e.response?.data['message'] != null) {
-          userMessage = e.response!.data['message'].toString();
-        } else if (e.type == DioExceptionType.connectionTimeout ||
-            e.type == DioExceptionType.receiveTimeout ||
-            e.type == DioExceptionType.connectionError) {
-          userMessage = 'Unable to reach screening server. Please check your internet connection.';
-        }
-      } else {
-        final cleanMsg = e.toString().replaceAll('Exception: ', '').trim();
-        if (cleanMsg.isNotEmpty && !cleanMsg.contains('DioException')) {
-          userMessage = cleanMsg;
-        }
-      }
+      final userMessage = ApiException.extractUserMessage(e);
+      final bool isSessionExpired = e is UnauthorizedException ||
+          (e is DioException && e.response?.statusCode == 401);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

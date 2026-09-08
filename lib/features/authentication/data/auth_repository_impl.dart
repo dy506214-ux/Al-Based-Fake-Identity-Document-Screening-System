@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_endpoints.dart';
+import '../../../core/network/api_exceptions.dart';
 import '../../../core/security/secure_storage_service.dart';
 import '../domain/auth_repository.dart';
 
@@ -41,21 +42,14 @@ class AuthRepositoryImpl implements AuthRepository {
       } else {
         throw Exception(response.data?['message'] ?? 'Invalid credentials');
       }
+    } on ApiException catch (e) {
+      throw Exception(e.message);
     } on DioException catch (e) {
-      if (e.response?.statusCode == 401) {
-        throw Exception('Invalid email or password');
-      } else if (e.response?.statusCode == 429) {
-        throw Exception('Too many login attempts. Please wait a moment and try again.');
-      } else if (e.response?.data != null && e.response?.data['message'] != null) {
-        throw Exception(e.response!.data['message']);
-      } else if (e.type == DioExceptionType.connectionTimeout ||
-          e.type == DioExceptionType.receiveTimeout ||
-          e.type == DioExceptionType.connectionError) {
-        throw Exception('Unable to reach screening server. Please verify your internet connection.');
-      }
-      throw Exception('Authentication failed (${e.response?.statusCode ?? 'Network'})');
+      final apiEx = ApiException.fromDioException(e);
+      throw Exception(apiEx.message);
     } catch (e) {
-      throw Exception('Login failed: ${e.toString().replaceAll('Exception: ', '')}');
+      final msg = ApiException.extractUserMessage(e);
+      throw Exception(msg);
     }
   }
 

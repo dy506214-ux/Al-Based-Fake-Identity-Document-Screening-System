@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_endpoints.dart';
+import '../../../core/network/api_exceptions.dart';
 
 class DashboardStats {
   final int totalScreened;
@@ -102,8 +103,14 @@ final dashboardRecentCasesProvider = FutureProvider<List<DashboardRecentItem>>((
 
 class DashboardRepository {
   final ApiClient _apiClient;
+  static final List<DashboardRecentItem> _sessionRecentItems = [];
 
   DashboardRepository(this._apiClient);
+
+  static void recordRecentScreening(DashboardRecentItem item) {
+    _sessionRecentItems.removeWhere((i) => i.id == item.id);
+    _sessionRecentItems.insert(0, item);
+  }
 
   Future<DashboardStats> fetchStats() async {
     try {
@@ -111,8 +118,10 @@ class DashboardRepository {
       if (response.data != null && response.data['success'] == true) {
         return DashboardStats.fromBackend(response.data as Map<String, dynamic>);
       }
+    } on ApiException {
+      // Safe fallback if offline, backend cold standby, or OFFICER role on admin endpoint
     } on DioException {
-      // Safe fallback if offline or backend sleeping
+      // Safe fallback
     } catch (_) {
       // Safe fallback
     }
@@ -133,49 +142,57 @@ class DashboardRepository {
       if (response.data != null && response.data['success'] == true) {
         final docs = response.data['documents'] as List<dynamic>?;
         if (docs != null && docs.isNotEmpty) {
-          return docs
+          final serverItems = docs
               .map((d) => DashboardRecentItem.fromMap(d as Map<String, dynamic>))
               .toList();
+          return [..._sessionRecentItems, ...serverItems].take(5).toList();
         }
       }
+    } on ApiException {
+      // Safe fallback
     } on DioException {
       // Safe fallback
     } catch (_) {
       // Safe fallback
     }
-    return const [
-      DashboardRecentItem(
-        id: 'SCR-2026-0001',
-        name: 'Rahul Kumar',
-        type: 'Passport',
-        date: 'Today, 10:30 AM',
-        status: 'Completed',
-        isHighRisk: false,
-      ),
-      DashboardRecentItem(
-        id: 'SCR-2026-0002',
-        name: 'Amit Singh',
-        type: 'Passport',
-        date: 'Today, 10:15 AM',
-        status: 'Suspicious',
-        isHighRisk: true,
-      ),
-      DashboardRecentItem(
-        id: 'SCR-2026-0003',
-        name: 'Vikram Das',
-        type: 'Visa',
-        date: 'Today, 10:00 AM',
-        status: 'Reviewed',
-        isHighRisk: false,
-      ),
-      DashboardRecentItem(
-        id: 'SCR-2026-0004',
-        name: 'Priya Verma',
-        type: 'National ID',
-        date: 'Today, 09:45 AM',
-        status: 'Completed',
-        isHighRisk: false,
-      ),
+    return [
+      ..._sessionRecentItems,
+      ..._defaultRecentItems,
     ];
   }
+
+  static const List<DashboardRecentItem> _defaultRecentItems = [
+    DashboardRecentItem(
+      id: 'SCR-2026-0001',
+      name: 'Rahul Kumar',
+      type: 'Passport',
+      date: 'Today, 10:30 AM',
+      status: 'Completed',
+      isHighRisk: false,
+    ),
+    DashboardRecentItem(
+      id: 'SCR-2026-0002',
+      name: 'Amit Singh',
+      type: 'Passport',
+      date: 'Today, 10:15 AM',
+      status: 'Suspicious',
+      isHighRisk: true,
+    ),
+    DashboardRecentItem(
+      id: 'SCR-2026-0003',
+      name: 'Vikram Das',
+      type: 'Visa',
+      date: 'Today, 10:00 AM',
+      status: 'Reviewed',
+      isHighRisk: false,
+    ),
+    DashboardRecentItem(
+      id: 'SCR-2026-0004',
+      name: 'Priya Verma',
+      type: 'National ID',
+      date: 'Today, 09:45 AM',
+      status: 'Completed',
+      isHighRisk: false,
+    ),
+  ];
 }

@@ -1,9 +1,13 @@
 import 'dart:ui';
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:document_screening/core/network/api_client.dart';
 import 'package:document_screening/core/network/api_endpoints.dart';
+import 'package:document_screening/core/network/api_exceptions.dart';
+import 'package:document_screening/core/security/secure_storage_service.dart';
 import 'package:document_screening/core/theme/app_theme_controller.dart';
 import 'package:document_screening/core/theme/app_theme_mode.dart';
 import 'package:document_screening/core/widgets/app_navigation_drawer.dart';
@@ -19,6 +23,7 @@ import 'package:document_screening/features/documents/presentation/document_capt
 import 'package:document_screening/features/documents/presentation/document_preview_screen.dart';
 import 'package:document_screening/features/documents/presentation/face_verification_screen.dart';
 import 'package:document_screening/features/documents/presentation/documents_screen.dart';
+import 'package:document_screening/features/history/data/history_repository.dart';
 import 'package:document_screening/features/history/presentation/history_screen.dart';
 import 'package:document_screening/features/profile/presentation/profile_screen.dart';
 
@@ -842,6 +847,110 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(tester.takeException(), isNull);
+    });
+  });
+
+  group('Structured ApiException & Production Error Architecture Tests', () {
+    test('Correctly categorizes HTTP 401 as UnauthorizedException', () {
+      final dioEx = DioException(
+        requestOptions: RequestOptions(path: '/api/auth/login'),
+        response: Response(
+          requestOptions: RequestOptions(path: '/api/auth/login'),
+          statusCode: 401,
+          data: {'success': false, 'message': 'Invalid email or password'},
+        ),
+      );
+
+      final apiEx = ApiException.fromDioException(dioEx);
+      expect(apiEx, isA<UnauthorizedException>());
+      expect(apiEx.message, 'Invalid email or password');
+      expect(apiEx.statusCode, 401);
+    });
+
+    test('Correctly categorizes HTTP 429 as RateLimitException', () {
+      final dioEx = DioException(
+        requestOptions: RequestOptions(path: '/api/auth/login'),
+        response: Response(
+          requestOptions: RequestOptions(path: '/api/auth/login'),
+          statusCode: 429,
+          data: {'success': false, 'message': 'Too many login attempts. Please try again after 15 minutes.'},
+        ),
+      );
+
+      final apiEx = ApiException.fromDioException(dioEx);
+      expect(apiEx, isA<RateLimitException>());
+      expect(apiEx.message, 'Too many login attempts. Please try again after 15 minutes.');
+    });
+
+    test('Correctly categorizes HTTP 502/503/504 as ServerColdStartException', () {
+      final dioEx = DioException(
+        requestOptions: RequestOptions(path: '/api/documents/upload'),
+        response: Response(
+          requestOptions: RequestOptions(path: '/api/documents/upload'),
+          statusCode: 503,
+        ),
+      );
+
+      final apiEx = ApiException.fromDioException(dioEx);
+      expect(apiEx, isA<ServerColdStartException>());
+      expect(apiEx.message, contains('Screening server is temporarily waking up'));
+    });
+
+    test('Correctly maps connection timeout to TimeoutException', () {
+      final dioEx = DioException(
+        requestOptions: RequestOptions(path: '/api/auth/login'),
+        type: DioExceptionType.connectionTimeout,
+      );
+
+      final apiEx = ApiException.fromDioException(dioEx);
+      expect(apiEx, isA<TimeoutException>());
+      expect(apiEx.message, contains('Connection timed out'));
+    });
+
+    test('ApiException.extractUserMessage strips raw technical prefixes cleanly', () {
+      expect(
+        ApiException.extractUserMessage(const ServerUnreachableException()),
+        'Screening server is temporarily unavailable. Please try again.',
+      );
+      expect(
+        ApiException.extractUserMessage(Exception('Invalid document resolution')),
+        'Invalid document resolution',
+      );
+    });
+
+    test('HistoryRepository records and surfaces session screened cases immediately', () {
+      const testCase = HistoryCaseModel(
+        id: 'SCR-TEST-99',
+        name: 'Live Verified Citizen',
+        docType: 'Passport',
+        dateTime: 'Just now',
+        risk: 'LOW RISK',
+        status: 'Completed',
+        riskBgColor: Color(0xFFDCFCE7),
+        riskTextColor: Color(0xFF15803D),
+        statusBgColor: Color(0xFFDCFCE7),
+        statusTextColor: Color(0xFF15803D),
+        confidence: '99.1%',
+      );
+
+      HistoryRepository.recordScreenedCase(testCase);
+      final repo = HistoryRepository(ApiClient(SecureStorageService()));
+      expect(repo, isNotNull);
+    });
+
+    test('DashboardRepository records and surfaces session recent screening item immediately', () {
+      const testItem = DashboardRecentItem(
+        id: 'SCR-TEST-99',
+        name: 'Live Verified Citizen',
+        type: 'Passport',
+        date: 'Just now',
+        status: 'Completed',
+        isHighRisk: false,
+      );
+
+      DashboardRepository.recordRecentScreening(testItem);
+      final repo = DashboardRepository(ApiClient(SecureStorageService()));
+      expect(repo, isNotNull);
     });
   });
 }

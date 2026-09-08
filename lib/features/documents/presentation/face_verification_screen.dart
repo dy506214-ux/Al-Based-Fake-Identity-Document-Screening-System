@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -215,12 +216,42 @@ class _FaceVerificationScreenState extends ConsumerState<FaceVerificationScreen>
         _isProcessing = false;
       });
 
+      String userMessage = 'Unable to complete identity verification. Please try again.';
+      bool isSessionExpired = false;
+
+      if (e is DioException) {
+        if (e.response?.statusCode == 401) {
+          userMessage = 'Session expired. Please sign in again.';
+          isSessionExpired = true;
+        } else if (e.response?.statusCode == 413) {
+          userMessage = 'Face photo file is too large. Please retake.';
+        } else if (e.response?.statusCode == 429) {
+          userMessage = 'Too many requests. Please wait a moment and try again.';
+        } else if (e.response?.data is Map && e.response?.data['message'] != null) {
+          userMessage = e.response!.data['message'].toString();
+        } else if (e.type == DioExceptionType.connectionTimeout ||
+            e.type == DioExceptionType.receiveTimeout ||
+            e.type == DioExceptionType.connectionError) {
+          userMessage = 'Unable to reach screening server. Please check your internet connection.';
+        }
+      } else {
+        final cleanMsg = e.toString().replaceAll('Exception: ', '').trim();
+        if (cleanMsg.isNotEmpty && !cleanMsg.contains('DioException')) {
+          userMessage = cleanMsg;
+        }
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: const Color(0xFFDC2626),
-          content: Text(
-            'Verification notification: ${e.toString().replaceAll("Exception:", "").trim()}',
-          ),
+          content: Text(userMessage),
+          action: isSessionExpired
+              ? SnackBarAction(
+                  label: 'SIGN IN',
+                  textColor: const Color(0xFFF59E0B),
+                  onPressed: () => context.go('/login'),
+                )
+              : null,
           duration: const Duration(seconds: 4),
         ),
       );

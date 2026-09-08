@@ -41,7 +41,7 @@ class ApiClient {
     return InterceptorsWrapper(
       onRequest: (options, handler) async {
         final token = await _secureStorage.getAccessToken();
-        if (token != null) {
+        if (token != null && token.isNotEmpty) {
           options.headers['Authorization'] = 'Bearer $token';
         }
         // Only set Content-Type if request contains payload and is not FormData
@@ -56,7 +56,8 @@ class ApiClient {
       },
       onError: (DioException e, handler) async {
         if (e.response?.statusCode == 401) {
-          // Token expired or unauthorized
+          // Token expired or unauthorized on server: purge local invalid session
+          await _secureStorage.clearTokens();
         }
         return handler.next(e);
       },

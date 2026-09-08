@@ -22,53 +22,40 @@ class AuthRepositoryImpl implements AuthRepository {
     final cleanEmail = email.trim().toLowerCase();
     final cleanPassword = password.trim();
 
-    final isPrakhar = cleanEmail == 'prakhar@gmail.com' && cleanPassword == 'test@123';
-    final isOfficer = (cleanEmail == 'officer@test.com' || cleanEmail == 'officer@test.con') && cleanPassword == '123456';
-    final isAdmin = cleanEmail == 'admin' && cleanPassword == 'admin';
-
     try {
-      // Real API attempt
       final response = await _apiClient.post(
         ApiEndpoints.login,
-        data: {'email': email.trim(), 'password': password},
+        data: {'email': cleanEmail, 'password': cleanPassword},
       );
 
       if (response.data != null && response.data['success'] == true) {
-        final token = response.data['token']?.toString() ?? 'live_token_${DateTime.now().millisecondsSinceEpoch}';
-        await _secureStorage.saveTokens(
-          accessToken: token,
-          refreshToken: token,
-        );
-        return;
+        final token = response.data['token']?.toString();
+        if (token != null && token.isNotEmpty) {
+          await _secureStorage.saveTokens(
+            accessToken: token,
+            refreshToken: token,
+          );
+          return;
+        }
+        throw Exception('No authentication token returned by server');
       } else {
         throw Exception(response.data?['message'] ?? 'Invalid credentials');
       }
     } on DioException catch (e) {
-      // Handles browser CORS/preflight failure or network timeout on Flutter Web
-      if (isPrakhar || isOfficer || isAdmin) {
-        // Authenticate with verified officer token from live database
-        const verifiedToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhOGVmMjY4ZjI4YTJkNzFhYWU3NDU0MyIsInJvbGUiOiJPRkZJQ0VSIiwiaWF0IjoxNzg4NjA2Nzg5LCJleHAiOjE3ODg2OTMxODl9.3e-eZaPpnTVdrrYSwCNtXa71w611HbSdbc96HUQEQOA';
-        await _secureStorage.saveTokens(
-          accessToken: verifiedToken,
-          refreshToken: verifiedToken,
-        );
-        return;
-      }
-
-      if (e.response?.data != null && e.response?.data['message'] != null) {
+      if (e.response?.statusCode == 401) {
+        throw Exception('Invalid email or password');
+      } else if (e.response?.statusCode == 429) {
+        throw Exception('Too many login attempts. Please wait a moment and try again.');
+      } else if (e.response?.data != null && e.response?.data['message'] != null) {
         throw Exception(e.response!.data['message']);
+      } else if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout ||
+          e.type == DioExceptionType.connectionError) {
+        throw Exception('Unable to reach screening server. Please verify your internet connection.');
       }
-      throw Exception('Invalid email or password');
+      throw Exception('Authentication failed (${e.response?.statusCode ?? 'Network'})');
     } catch (e) {
-      if (isPrakhar || isOfficer || isAdmin) {
-        const verifiedToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhOGVmMjY4ZjI4YTJkNzFhYWU3NDU0MyIsInJvbGUiOiJPRkZJQ0VSIiwiaWF0IjoxNzg4NjA2Nzg5LCJleHAiOjE3ODg2OTMxODl9.3e-eZaPpnTVdrrYSwCNtXa71w611HbSdbc96HUQEQOA';
-        await _secureStorage.saveTokens(
-          accessToken: verifiedToken,
-          refreshToken: verifiedToken,
-        );
-        return;
-      }
-      throw Exception('Login failed: ${e.toString()}');
+      throw Exception('Login failed: ${e.toString().replaceAll('Exception: ', '')}');
     }
   }
 
@@ -80,6 +67,15 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<bool> checkAuthStatus() async {
     final token = await _secureStorage.getAccessToken();
-    return token != null && token.isNotEmpty;
+    if (token == null || token.isEmpty) return false;
+
+    // Purge known expired mock tokens or invalid debug tokens from storage
+    if (token == 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhOGVmMjY4ZjI4YTJkNzFhYWU3NDU0MyIsInJvbGUiOiJPRkZJQ0VSIiwiaWF0IjoxNzg4NjA2Nzg5LCJleHAiOjE3ODg2OTMxODl9.3e-eZaPpnTVdrrYSwCNtXa71w611HbSdbc96HUQEQOA' ||
+        token.startsWith('live_token_')) {
+      await _secureStorage.clearTokens();
+      return false;
+    }
+
+    return true;
   }
 }

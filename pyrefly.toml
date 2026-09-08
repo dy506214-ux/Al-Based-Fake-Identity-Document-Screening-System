@@ -1,0 +1,12 @@
+project-excludes = [
+    "**/__pyrefly_virtual__/**",
+    "**/_pyrefly_virtual_/**",
+    "**/*",
+]
+disable-type-errors-in-ide = true
+permissive-ignores = true
+
+[errors]
+all = "ignore"
+parse-error = "ignore"
+unknown-name = "ignore"

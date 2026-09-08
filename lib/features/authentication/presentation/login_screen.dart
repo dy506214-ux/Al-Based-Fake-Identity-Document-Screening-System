@@ -12,8 +12,8 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen>
     with SingleTickerProviderStateMixin {
-  final _emailController = TextEditingController(text: 'prakhar@gmail.com');
-  final _passwordController = TextEditingController(text: 'test@123');
+  final _emailController = TextEditingController(text: 'officer@test.com');
+  final _passwordController = TextEditingController(text: '123456');
   bool _obscurePassword = true;
   bool _rememberMe = true;
   late final AnimationController _rotationController;
@@ -465,28 +465,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                 children: [
                                   InkWell(
                                     onTap: () => _setCredentials(
-                                        'prakhar@gmail.com', 'test@123'),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 8, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: Colors.grey.shade100,
-                                        borderRadius: BorderRadius.circular(6),
-                                        border: Border.all(
-                                            color: Colors.grey.shade300),
-                                      ),
-                                      child: const Text(
-                                        'Officer Prakhar',
-                                        style: TextStyle(
-                                            fontSize: 11,
-                                            color: Color(0xFF334155),
-                                            fontWeight: FontWeight.w600),
-                                      ),
-                                    ),
-                                  ),
-                                  InkWell(
-                                    onTap: () => _setCredentials(
-                                        'Officer@test.com', '123456'),
+                                        'officer@test.com', '123456'),
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(
                                           horizontal: 8, vertical: 4),
@@ -506,8 +485,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                     ),
                                   ),
                                   InkWell(
-                                    onTap: () =>
-                                        _setCredentials('admin', 'admin'),
+                                    onTap: () => _setCredentials(
+                                        'officer@agency.gov.in', 'password123'),
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(
                                           horizontal: 8, vertical: 4),
@@ -518,7 +497,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                             color: Colors.grey.shade300),
                                       ),
                                       child: const Text(
-                                        'Admin Bypass',
+                                        'Officer Agency',
                                         style: TextStyle(
                                             fontSize: 11,
                                             color: Color(0xFF334155),

@@ -9,7 +9,10 @@ class AppBottomNavbar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final String location = GoRouterState.of(context).uri.toString();
+    String location = '/screening';
+    try {
+      location = GoRouterState.of(context).uri.toString();
+    } catch (_) {}
     final currentTheme = ref.watch(appThemeProvider);
 
     int currentIndex = 0;
@@ -17,7 +20,10 @@ class AppBottomNavbar extends ConsumerWidget {
       currentIndex = 0;
     } else if (location.startsWith('/documents')) {
       currentIndex = 1;
-    } else if (location.startsWith('/screening')) {
+    } else if (location.startsWith('/screening') ||
+        location.startsWith('/capture') ||
+        location.startsWith('/preview') ||
+        location.startsWith('/face-verification')) {
       currentIndex = 2;
     } else if (location.startsWith('/history')) {
       currentIndex = 3;

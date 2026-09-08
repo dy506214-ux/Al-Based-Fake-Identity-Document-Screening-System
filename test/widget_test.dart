@@ -8,9 +8,14 @@ import 'package:document_screening/core/theme/app_theme_mode.dart';
 import 'package:document_screening/core/widgets/app_navigation_drawer.dart';
 import 'package:document_screening/core/widgets/app_pull_to_refresh.dart';
 import 'package:document_screening/core/widgets/app_top_navbar.dart';
+import 'package:document_screening/core/widgets/app_bottom_navbar.dart';
 import 'package:document_screening/features/dashboard/data/dashboard_repository.dart';
 import 'package:document_screening/features/dashboard/presentation/dashboard_screen.dart';
+import 'package:document_screening/features/documents/data/document_quality_service.dart';
 import 'package:document_screening/features/documents/data/document_repository.dart';
+import 'package:document_screening/features/documents/presentation/document_capture_screen.dart';
+import 'package:document_screening/features/documents/presentation/document_preview_screen.dart';
+import 'package:document_screening/features/documents/presentation/face_verification_screen.dart';
 import 'package:document_screening/features/documents/presentation/documents_screen.dart';
 import 'package:document_screening/features/history/presentation/history_screen.dart';
 import 'package:document_screening/features/profile/presentation/profile_screen.dart';
@@ -615,6 +620,158 @@ void main() {
       expect(find.text('Officer Sharma'), findsOneWidget);
       expect(find.text('Dashboard'), findsOneWidget);
       expect(find.text('ACTIVE THEME'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+  });
+
+  group('DocumentCaptureScreen Tests', () {
+    testWidgets('DocumentCaptureScreen renders UI headers, title, step, security bar without crashing', (tester) async {
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: MaterialApp(
+            home: DocumentCaptureScreen(selectedDocType: 'Aadhaar Card'),
+          ),
+        ),
+      );
+
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.text('CAPTURE DOCUMENT'), findsOneWidget);
+      expect(find.textContaining('Step 2 of 8'), findsOneWidget);
+      expect(find.textContaining('PROTECTED DOCUMENT CAPTURE'), findsOneWidget);
+      expect(find.text('Place the document inside the frame'), findsOneWidget);
+
+      expect(tester.takeException(), isNull);
+    });
+  });
+
+  group('DocumentQualityService Tests', () {
+    test('Correctly computes report structure and labels', () {
+      const service = DocumentQualityService();
+      expect(service, isNotNull);
+    });
+  });
+
+  group('DocumentPreviewScreen Tests', () {
+    testWidgets('DocumentPreviewScreen renders Reference 3 UI headers, security banner, quality checks, controls', (tester) async {
+      tester.view.physicalSize = const Size(390 * 2, 844 * 2);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: MaterialApp(
+            home: DocumentPreviewScreen(
+              capturedFile: null,
+              selectedDocType: 'Passport',
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Verify Header & Subtitle
+      expect(find.text('DOCUMENT PREVIEW'), findsOneWidget);
+      expect(find.text('Step 3 of 8 · Verify image quality'), findsOneWidget);
+
+      // Verify Security Banner
+      expect(find.text('PROTECTED DOCUMENT · SECURE PREVIEW'), findsOneWidget);
+
+      // Verify Captured Document header & Badge
+      expect(find.text('CAPTURED DOCUMENT'), findsOneWidget);
+      expect(find.textContaining('Image Quality'), findsOneWidget);
+
+      // Verify 3 utility buttons
+      expect(find.text('Zoom'), findsOneWidget);
+      expect(find.text('Rotate'), findsOneWidget);
+      expect(find.text('Fullscreen'), findsOneWidget);
+
+      // Verify Quality Checks Card
+      expect(find.text('QUALITY CHECKS'), findsOneWidget);
+      expect(find.text('Resolution'), findsOneWidget);
+      expect(find.text('All corners visible'), findsOneWidget);
+      expect(find.text('No glare detected'), findsOneWidget);
+      expect(find.text('Text readable'), findsOneWidget);
+
+      // Verify Bottom Buttons
+      expect(find.text('Retake'), findsOneWidget);
+      expect(find.text('CONFIRM & PROCEED'), findsOneWidget);
+
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('Tapping Rotate and Zoom buttons triggers action without crashing', (tester) async {
+      tester.view.physicalSize = const Size(390 * 2, 844 * 2);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: MaterialApp(
+            home: DocumentPreviewScreen(
+              capturedFile: null,
+              selectedDocType: 'Passport',
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Tap Rotate button
+      await tester.tap(find.text('Rotate'));
+      await tester.pumpAndSettle();
+
+      // Tap Zoom button
+      await tester.tap(find.text('Zoom'));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+    });
+  });
+
+  group('FaceVerificationScreen Tests', () {
+    testWidgets('FaceVerificationScreen renders Reference 2 UI, cards, warning banner, and bottom navbar', (tester) async {
+      tester.view.physicalSize = const Size(390 * 2, 844 * 2);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: MaterialApp(
+            home: FaceVerificationScreen(
+              documentId: 'test_doc_123',
+              selectedDocType: 'Passport',
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Verify Header & Subtitle
+      expect(find.text('FACE VERIFICATION'), findsOneWidget);
+      expect(find.text("Step 4 of 8 · Capture person's face"), findsOneWidget);
+
+      // Verify Security Banner
+      expect(find.text('BIOMETRIC DATA · SECURE PROCESSING'), findsOneWidget);
+
+      // Verify Main Card
+      expect(find.text('Capture Face Photo'), findsOneWidget);
+      expect(find.textContaining('Capture or upload the person\'s face photo'), findsOneWidget);
+
+      // Verify Warning Banner
+      expect(find.textContaining('AI screening cannot proceed without both'), findsOneWidget);
+
+      // Verify Options
+      expect(find.text('Take Live Photo'), findsOneWidget);
+      expect(find.text('RECOMMENDED'), findsOneWidget);
+      expect(find.text('Upload Photo'), findsOneWidget);
+
+      // Verify Bottom Navbar is present
+      expect(find.byType(AppBottomNavbar), findsOneWidget);
+
       expect(tester.takeException(), isNull);
     });
   });

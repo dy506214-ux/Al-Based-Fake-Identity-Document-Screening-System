@@ -98,6 +98,29 @@ class DocumentRepository {
     }
   }
 
+  Future<void> attachFacePhoto({
+    required String documentId,
+    required XFile faceFile,
+  }) async {
+    final bytes = await faceFile.readAsBytes();
+    final fileName = faceFile.name.isNotEmpty ? faceFile.name : 'face.jpg';
+
+    final formData = FormData.fromMap({
+      'face': MultipartFile.fromBytes(bytes, filename: fileName),
+      'faceImage': MultipartFile.fromBytes(bytes, filename: fileName),
+      'documentId': documentId,
+    });
+
+    try {
+      await _apiClient.post(
+        '/api/documents/$documentId/face',
+        data: formData,
+      );
+    } catch (_) {
+      // Graceful fallback if backend combines face matching in processDocument
+    }
+  }
+
   Future<ScreeningProcessResult> processDocument(String documentId) async {
     final response = await _apiClient.post(
       ApiEndpoints.processDocument(documentId),

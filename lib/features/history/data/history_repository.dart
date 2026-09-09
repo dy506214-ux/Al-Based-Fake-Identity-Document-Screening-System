@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
@@ -29,8 +28,9 @@ class HistoryRepository {
 
   Future<List<HistoryCaseModel>> fetchHistoryCases() async {
     try {
+      // Primary: officer's real screened documents from the production MongoDB database
       final response = await _apiClient.get(
-        ApiEndpoints.adminDocuments,
+        ApiEndpoints.myDocuments,
         queryParameters: {'limit': 50},
       );
 
@@ -42,15 +42,23 @@ class HistoryRepository {
         }
       }
     } on ApiException {
-      // Safe fallback if offline, backend cold standby, or OFFICER role 403 on admin endpoint
-    } on DioException {
-      // Safe fallback
-    } catch (_) {
-      // Safe fallback
-    }
+      // Secondary fallback for ADMIN roles:
+      try {
+        final adminRes = await _apiClient.get(
+          ApiEndpoints.adminDocuments,
+          queryParameters: {'limit': 50},
+        );
+        if (adminRes.data != null && adminRes.data['success'] == true) {
+          final docs = adminRes.data['documents'] as List<dynamic>?;
+          if (docs != null && docs.isNotEmpty) {
+            final serverCases = docs.map((d) => _mapBackendDocToCase(d as Map<String, dynamic>)).toList();
+            return [..._sessionCases, ...serverCases];
+          }
+        }
+      } catch (_) {}
+    } catch (_) {}
 
-    // Return session screened cases combined with baseline history
-    return [..._sessionCases, ..._defaultCases];
+    return [..._sessionCases];
   }
 
   HistoryCaseModel _mapBackendDocToCase(Map<String, dynamic> doc) {
@@ -140,72 +148,4 @@ class HistoryRepository {
       confidence: confidence,
     );
   }
-
-  static const List<HistoryCaseModel> _defaultCases = [
-    HistoryCaseModel(
-      id: 'SCR-2026-0001',
-      name: 'Rahul Kumar',
-      docType: 'Passport',
-      dateTime: '26 Aug, 10:30 AM',
-      risk: 'LOW RISK',
-      status: 'Completed',
-      riskBgColor: Color(0xFFDCFCE7),
-      riskTextColor: Color(0xFF15803D),
-      statusBgColor: Color(0xFFDCFCE7),
-      statusTextColor: Color(0xFF15803D),
-      confidence: '99.2%',
-    ),
-    HistoryCaseModel(
-      id: 'SCR-2026-0002',
-      name: 'Amit Singh',
-      docType: 'Passport',
-      dateTime: '26 Aug, 10:15 AM',
-      risk: 'HIGH RISK',
-      status: 'Suspicious',
-      riskBgColor: Color(0xFFFEE2E2),
-      riskTextColor: Color(0xFFDC2626),
-      statusBgColor: Color(0xFFFEE2E2),
-      statusTextColor: Color(0xFFDC2626),
-      confidence: '42.8%',
-    ),
-    HistoryCaseModel(
-      id: 'SCR-2026-0003',
-      name: 'Vikram Das',
-      docType: 'Visa',
-      dateTime: '26 Aug, 10:00 AM',
-      risk: 'MEDIUM RISK',
-      status: 'Reviewed',
-      riskBgColor: Color(0xFFFEF3C7),
-      riskTextColor: Color(0xFFD97706),
-      statusBgColor: Color(0xFFFEF3C7),
-      statusTextColor: Color(0xFFD97706),
-      confidence: '78.5%',
-    ),
-    HistoryCaseModel(
-      id: 'SCR-2026-0004',
-      name: 'Priya Verma',
-      docType: 'National ID',
-      dateTime: '26 Aug, 09:45 AM',
-      risk: 'LOW RISK',
-      status: 'Completed',
-      riskBgColor: Color(0xFFDCFCE7),
-      riskTextColor: Color(0xFF15803D),
-      statusBgColor: Color(0xFFDCFCE7),
-      statusTextColor: Color(0xFF15803D),
-      confidence: '98.9%',
-    ),
-    HistoryCaseModel(
-      id: 'SCR-2026-0005',
-      name: 'Sunita Patel',
-      docType: 'Driving Licence',
-      dateTime: '26 Aug, 09:20 AM',
-      risk: 'MEDIUM RISK',
-      status: 'Pending',
-      riskBgColor: Color(0xFFFEF3C7),
-      riskTextColor: Color(0xFFD97706),
-      statusBgColor: Color(0xFFF1F5F9),
-      statusTextColor: Color(0xFF475569),
-      confidence: '81.0%',
-    ),
-  ];
 }

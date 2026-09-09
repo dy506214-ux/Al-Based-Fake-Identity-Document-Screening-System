@@ -1,8 +1,6 @@
-import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_endpoints.dart';
-import '../../../core/network/api_exceptions.dart';
 
 class DashboardStats {
   final int totalScreened;
@@ -114,29 +112,68 @@ class DashboardRepository {
 
   Future<DashboardStats> fetchStats() async {
     try {
+      // 1. Primary: fetch real officer documents from MongoDB
+      final myDocsRes = await _apiClient.get(
+        ApiEndpoints.myDocuments,
+        queryParameters: {'limit': 100},
+      );
+
+      if (myDocsRes.data != null && myDocsRes.data['success'] == true) {
+        final total = (myDocsRes.data['total'] as num?)?.toInt() ?? 0;
+        final docs = (myDocsRes.data['documents'] as List<dynamic>?) ?? [];
+
+        int pending = 0;
+        int completed = 0;
+        int highRisk = 0;
+
+        for (final doc in docs) {
+          if (doc is Map<String, dynamic>) {
+            final reviewStatus = (doc['reviewStatus'] ?? '').toString().toUpperCase();
+            final valStatus = (doc['validationStatus'] ?? '').toString().toUpperCase();
+            final riskLevel = (doc['riskLevel'] ?? '').toString().toUpperCase();
+
+            if (reviewStatus == 'PENDING' || valStatus == 'NEEDS_REVIEW') {
+              pending++;
+            }
+            if (valStatus == 'VALIDATED' || valStatus == 'REJECTED') {
+              completed++;
+            }
+            if (riskLevel == 'HIGH' || riskLevel == 'CRITICAL') {
+              highRisk++;
+            }
+          }
+        }
+
+        return DashboardStats(
+          totalScreened: total > 0 ? total : docs.length,
+          pendingReview: pending,
+          completedToday: completed,
+          highRiskFound: highRisk,
+        );
+      }
+    } catch (_) {}
+
+    try {
+      // 2. Secondary fallback for ADMIN roles
       final response = await _apiClient.get(ApiEndpoints.adminStats);
       if (response.data != null && response.data['success'] == true) {
         return DashboardStats.fromBackend(response.data as Map<String, dynamic>);
       }
-    } on ApiException {
-      // Safe fallback if offline, backend cold standby, or OFFICER role on admin endpoint
-    } on DioException {
-      // Safe fallback
-    } catch (_) {
-      // Safe fallback
-    }
+    } catch (_) {}
+
     return const DashboardStats(
-      totalScreened: 1248,
-      pendingReview: 32,
-      completedToday: 96,
-      highRiskFound: 18,
+      totalScreened: 0,
+      pendingReview: 0,
+      completedToday: 0,
+      highRiskFound: 0,
     );
   }
 
   Future<List<DashboardRecentItem>> fetchRecentCases() async {
     try {
+      // 1. Primary: real officer recent cases from MongoDB
       final response = await _apiClient.get(
-        ApiEndpoints.adminDocuments,
+        ApiEndpoints.myDocuments,
         queryParameters: {'limit': 5},
       );
       if (response.data != null && response.data['success'] == true) {
@@ -148,51 +185,25 @@ class DashboardRepository {
           return [..._sessionRecentItems, ...serverItems].take(5).toList();
         }
       }
-    } on ApiException {
-      // Safe fallback
-    } on DioException {
-      // Safe fallback
-    } catch (_) {
-      // Safe fallback
-    }
-    return [
-      ..._sessionRecentItems,
-      ..._defaultRecentItems,
-    ];
-  }
+    } catch (_) {}
 
-  static const List<DashboardRecentItem> _defaultRecentItems = [
-    DashboardRecentItem(
-      id: 'SCR-2026-0001',
-      name: 'Rahul Kumar',
-      type: 'Passport',
-      date: 'Today, 10:30 AM',
-      status: 'Completed',
-      isHighRisk: false,
-    ),
-    DashboardRecentItem(
-      id: 'SCR-2026-0002',
-      name: 'Amit Singh',
-      type: 'Passport',
-      date: 'Today, 10:15 AM',
-      status: 'Suspicious',
-      isHighRisk: true,
-    ),
-    DashboardRecentItem(
-      id: 'SCR-2026-0003',
-      name: 'Vikram Das',
-      type: 'Visa',
-      date: 'Today, 10:00 AM',
-      status: 'Reviewed',
-      isHighRisk: false,
-    ),
-    DashboardRecentItem(
-      id: 'SCR-2026-0004',
-      name: 'Priya Verma',
-      type: 'National ID',
-      date: 'Today, 09:45 AM',
-      status: 'Completed',
-      isHighRisk: false,
-    ),
-  ];
+    try {
+      // 2. Secondary fallback for ADMIN roles
+      final adminRes = await _apiClient.get(
+        ApiEndpoints.adminDocuments,
+        queryParameters: {'limit': 5},
+      );
+      if (adminRes.data != null && adminRes.data['success'] == true) {
+        final docs = adminRes.data['documents'] as List<dynamic>?;
+        if (docs != null && docs.isNotEmpty) {
+          final serverItems = docs
+              .map((d) => DashboardRecentItem.fromMap(d as Map<String, dynamic>))
+              .toList();
+          return [..._sessionRecentItems, ...serverItems].take(5).toList();
+        }
+      }
+    } catch (_) {}
+
+    return _sessionRecentItems;
+  }
 }

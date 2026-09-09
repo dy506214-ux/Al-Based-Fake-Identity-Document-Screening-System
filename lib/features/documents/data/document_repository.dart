@@ -103,21 +103,19 @@ class DocumentRepository {
     required XFile faceFile,
   }) async {
     final bytes = await faceFile.readAsBytes();
-    final fileName = faceFile.name.isNotEmpty ? faceFile.name : 'face.jpg';
+    final fileName = faceFile.name.isNotEmpty ? faceFile.name : 'selfie.jpg';
 
     final formData = FormData.fromMap({
-      'face': MultipartFile.fromBytes(bytes, filename: fileName),
-      'faceImage': MultipartFile.fromBytes(bytes, filename: fileName),
-      'documentId': documentId,
+      'selfie': MultipartFile.fromBytes(bytes, filename: fileName),
     });
 
     try {
       await _apiClient.post(
-        '/api/documents/$documentId/face',
+        ApiEndpoints.verifyDocumentFace(documentId),
         data: formData,
       );
     } catch (_) {
-      // Graceful fallback if backend combines face matching in processDocument
+      // Graceful fallback if face verification is optional on document
     }
   }
 

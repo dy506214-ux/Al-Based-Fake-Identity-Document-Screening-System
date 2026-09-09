@@ -7,6 +7,7 @@ import '../theme/app_theme_controller.dart';
 import '../theme/app_theme_mode.dart';
 import 'app_pull_to_refresh.dart';
 import '../../features/dashboard/data/dashboard_repository.dart';
+import '../../features/authentication/presentation/auth_controller.dart';
 
 final notificationCountProvider = NotifierProvider<NotificationNotifier, int>(() {
   return NotificationNotifier();
@@ -397,7 +398,7 @@ class _AppTopNavbarState extends ConsumerState<AppTopNavbar>
                                 ),
                                 const SizedBox(height: 1),
                                 Text(
-                                  'Officer Sharma',
+                                  ref.watch(authControllerProvider).user?.name ?? 'Officer Sharma',
                                   maxLines: 1,
                                   style: TextStyle(
                                     color: Colors.white,
@@ -420,7 +421,10 @@ class _AppTopNavbarState extends ConsumerState<AppTopNavbar>
                                     ),
                                     const SizedBox(width: 4),
                                     Text(
-                                      'OFC-2024-0847 • Active',
+                                      ref.watch(authControllerProvider).user?.id != null &&
+                                              ref.watch(authControllerProvider).user!.id.isNotEmpty
+                                          ? 'OFC-${ref.watch(authControllerProvider).user!.id.length > 6 ? ref.watch(authControllerProvider).user!.id.substring(ref.watch(authControllerProvider).user!.id.length - 4).toUpperCase() : ref.watch(authControllerProvider).user!.id} • Active'
+                                          : 'OFC-2024-0847 • Active',
                                       maxLines: 1,
                                       style: TextStyle(
                                         color: const Color(0xFF86EFAC),

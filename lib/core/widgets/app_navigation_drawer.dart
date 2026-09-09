@@ -89,9 +89,9 @@ class _AppNavigationDrawerState extends ConsumerState<AppNavigationDrawer> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Officer Sharma',
-                          style: TextStyle(
+                        Text(
+                          ref.watch(authControllerProvider).user?.name ?? 'Officer Sharma',
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 16,
                             fontWeight: FontWeight.w800,
@@ -110,16 +110,20 @@ class _AppNavigationDrawerState extends ConsumerState<AppNavigationDrawer> {
                               ),
                             ),
                             const SizedBox(width: 6),
-                            const Expanded(
+                            Expanded(
                               child: FittedBox(
                                 fit: BoxFit.scaleDown,
                                 alignment: Alignment.centerLeft,
                                 child: Text(
-                                  'OFC-2024-0847 • Active',
-                                  style: TextStyle(
+                                  ref.watch(authControllerProvider).user?.id != null &&
+                                          ref.watch(authControllerProvider).user!.id.isNotEmpty
+                                      ? 'OFC-${ref.watch(authControllerProvider).user!.id.length > 6 ? ref.watch(authControllerProvider).user!.id.substring(ref.watch(authControllerProvider).user!.id.length - 4).toUpperCase() : ref.watch(authControllerProvider).user!.id} • Active'
+                                      : 'OFC-2024-0847 • Active',
+                                  style: const TextStyle(
                                     color: Color(0xFF86EFAC),
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.2,
                                   ),
                                 ),
                               ),

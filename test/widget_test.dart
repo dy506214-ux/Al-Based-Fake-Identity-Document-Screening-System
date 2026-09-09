@@ -26,6 +26,8 @@ import 'package:document_screening/features/documents/presentation/documents_scr
 import 'package:document_screening/features/history/data/history_repository.dart';
 import 'package:document_screening/features/history/presentation/history_screen.dart';
 import 'package:document_screening/features/profile/presentation/profile_screen.dart';
+import 'package:document_screening/features/authentication/domain/user_model.dart';
+import 'package:document_screening/features/authentication/presentation/auth_controller.dart';
 
 void main() {
   group('ApiEndpoints Production Tests', () {
@@ -951,6 +953,94 @@ void main() {
       DashboardRepository.recordRecentScreening(testItem);
       final repo = DashboardRepository(ApiClient(SecureStorageService()));
       expect(repo, isNotNull);
+    });
+  });
+
+  group('Authentication & UserModel Production Tests', () {
+    test('UserModel correctly serializes, deserializes, and computes initials', () {
+      final json = {
+        'id': '6a985fc5f6d7519b9e8f08ca',
+        'name': 'Officer test',
+        'email': 'officer@test.com',
+        'role': 'OFFICER',
+      };
+      final user = UserModel.fromJson(json);
+      expect(user.id, '6a985fc5f6d7519b9e8f08ca');
+      expect(user.name, 'Officer test');
+      expect(user.email, 'officer@test.com');
+      expect(user.role, 'OFFICER');
+      expect(user.initials, 'OT');
+
+      final serialized = user.toJson();
+      expect(serialized['name'], 'Officer test');
+      expect(serialized['role'], 'OFFICER');
+    });
+
+    test('Structured ApiException translates all HTTP status codes per Section 11', () {
+      final dioReq = RequestOptions(path: '/api/test');
+
+      // 401
+      final ex401 = ApiException.fromDioException(DioException(
+        requestOptions: dioReq,
+        response: Response(requestOptions: dioReq, statusCode: 401),
+      ));
+      expect(ex401, isA<UnauthorizedException>());
+      expect(ex401.message, contains('Invalid email or password'));
+
+      // 403
+      final ex403 = ApiException.fromDioException(DioException(
+        requestOptions: dioReq,
+        response: Response(requestOptions: dioReq, statusCode: 403),
+      ));
+      expect(ex403, isA<ForbiddenException>());
+      expect(ex403.message, contains('not authorized'));
+
+      // 404
+      final ex404 = ApiException.fromDioException(DioException(
+        requestOptions: dioReq,
+        response: Response(requestOptions: dioReq, statusCode: 404),
+      ));
+      expect(ex404, isA<NotFoundException>());
+      expect(ex404.message, contains('Requested authentication service was not found'));
+
+      // 422
+      final ex422 = ApiException.fromDioException(DioException(
+        requestOptions: dioReq,
+        response: Response(requestOptions: dioReq, statusCode: 422),
+      ));
+      expect(ex422, isA<ValidationException>());
+      expect(ex422.message, contains('Please check the entered information'));
+
+      // 500
+      final ex500 = ApiException.fromDioException(DioException(
+        requestOptions: dioReq,
+        response: Response(requestOptions: dioReq, statusCode: 500),
+      ));
+      expect(ex500, isA<ServerException>());
+      expect(ex500.message, contains('Screening server encountered an internal error'));
+
+      // 503
+      final ex503 = ApiException.fromDioException(DioException(
+        requestOptions: dioReq,
+        response: Response(requestOptions: dioReq, statusCode: 503),
+      ));
+      expect(ex503, isA<ServerColdStartException>());
+      expect(ex503.message, contains('Screening server is temporarily waking up'));
+    });
+
+    test('AuthState correctly stores UserModel on authentication', () {
+      const state = AuthState(
+        status: AuthStateStatus.authenticated,
+        user: UserModel(
+          id: '123',
+          name: 'Jane Doe',
+          email: 'jane@agency.gov',
+          role: 'OFFICER',
+        ),
+      );
+      expect(state.status, AuthStateStatus.authenticated);
+      expect(state.user?.name, 'Jane Doe');
+      expect(state.user?.initials, 'JD');
     });
   });
 }

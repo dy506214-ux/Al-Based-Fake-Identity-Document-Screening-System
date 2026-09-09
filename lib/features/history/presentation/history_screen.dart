@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme_controller.dart';
 import '../../../core/theme/app_theme_mode.dart';
 import '../../../core/widgets/app_pull_to_refresh.dart';
+import '../../authentication/presentation/auth_controller.dart';
 import '../data/history_repository.dart';
 
 class HistoryScreen extends ConsumerStatefulWidget {
@@ -192,7 +193,14 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                 const SizedBox(height: 8),
                 _detailRow('Screening Status', item.status),
                 const SizedBox(height: 8),
-                _detailRow('Verified By', 'Officer Sharma (OFC-2024-0847)'),
+                Builder(builder: (context) {
+                  final authUser = ref.read(authControllerProvider).user;
+                  final officerName = authUser?.name ?? 'Officer';
+                  final officerId = authUser?.id != null && authUser!.id.isNotEmpty
+                      ? 'OFC-${authUser.id.length > 6 ? authUser.id.substring(authUser.id.length - 4).toUpperCase() : authUser.id}'
+                      : 'OFC-OFFICER';
+                  return _detailRow('Verified By', '$officerName ($officerId)');
+                }),
                 const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,

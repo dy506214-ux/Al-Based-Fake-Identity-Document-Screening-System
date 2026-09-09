@@ -10,10 +10,17 @@ import '../../dashboard/data/dashboard_repository.dart';
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
-  void _showEditProfileSheet(BuildContext context, AppThemeMode theme) {
-    final nameController = TextEditingController(text: 'Officer Rajan Sharma');
-    final emailController = TextEditingController(text: 'prakhar@gmail.com');
-    final badgeController = TextEditingController(text: 'OFC-2024-0847');
+  void _showEditProfileSheet(BuildContext context, AppThemeMode theme, WidgetRef ref) {
+    final authUser = ref.read(authControllerProvider).user;
+    final officerName = authUser?.name ?? 'Officer';
+    final officerEmail = authUser?.email ?? '';
+    final officerId = authUser?.id != null && authUser!.id.isNotEmpty
+        ? 'OFC-${authUser.id.length > 6 ? authUser.id.substring(authUser.id.length - 4).toUpperCase() : authUser.id}'
+        : 'OFC-OFFICER';
+
+    final nameController = TextEditingController(text: officerName);
+    final emailController = TextEditingController(text: officerEmail);
+    final badgeController = TextEditingController(text: officerId);
 
     showModalBottomSheet(
       context: context,
@@ -317,6 +324,13 @@ class ProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = ref.watch(appThemeProvider);
+    final authUser = ref.watch(authControllerProvider).user;
+    final officerName = authUser?.name ?? 'Officer';
+    final officerInitials = authUser?.initials ?? 'OF';
+    final officerRole = authUser?.role ?? 'OFFICER';
+    final officerId = authUser?.id != null && authUser!.id.isNotEmpty
+        ? 'OFC-${authUser.id.length > 6 ? authUser.id.substring(authUser.id.length - 4).toUpperCase() : authUser.id}'
+        : 'OFC-OFFICER';
 
     return Container(
       color: const Color(0xFFFAF9F5),
@@ -341,12 +355,16 @@ class ProfileScreen extends ConsumerWidget {
                 painter: const ProfileTacticalGridPainter(),
                 child: Column(
                   children: [
-                    // Top Bar with Back Button and Title
+                    // Top Row with Back Button & Screen Title
                     Row(
                       children: [
                         InkWell(
                           onTap: () {
-                            context.go('/dashboard');
+                            if (Navigator.canPop(context)) {
+                              Navigator.pop(context);
+                            } else {
+                              context.go('/dashboard');
+                            }
                           },
                           borderRadius: BorderRadius.circular(10),
                           child: Container(
@@ -380,7 +398,7 @@ class ProfileScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 20),
 
-                    // Large RS Avatar Circle
+                    // Large Avatar Circle
                     Container(
                       width: 72,
                       height: 72,
@@ -393,9 +411,9 @@ class ProfileScreen extends ConsumerWidget {
                         ),
                       ),
                       alignment: Alignment.center,
-                      child: const Text(
-                        'RS',
-                        style: TextStyle(
+                      child: Text(
+                        officerInitials,
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 24,
                           fontWeight: FontWeight.w800,
@@ -406,9 +424,9 @@ class ProfileScreen extends ConsumerWidget {
                     const SizedBox(height: 14),
 
                     // Officer Name
-                    const Text(
-                      'Officer Rajan Sharma',
-                      style: TextStyle(
+                    Text(
+                      officerName,
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 20,
                         fontWeight: FontWeight.w800,
@@ -418,9 +436,9 @@ class ProfileScreen extends ConsumerWidget {
                     const SizedBox(height: 4),
 
                     // ID & Designation
-                    const Text(
-                      'OFC-2024-0847 · Senior Officer',
-                      style: TextStyle(
+                    Text(
+                      '$officerId · $officerRole',
+                      style: const TextStyle(
                         color: Color(0xFFA3B19B),
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
@@ -555,7 +573,7 @@ class ProfileScreen extends ConsumerWidget {
                     title: 'Edit Profile',
                     subtitle: 'Update your personal details',
                     iconColor: theme.primaryColor,
-                    onTap: () => _showEditProfileSheet(context, theme),
+                    onTap: () => _showEditProfileSheet(context, theme, ref),
                   ),
                   const SizedBox(height: 10),
                   _AccountActionCard(

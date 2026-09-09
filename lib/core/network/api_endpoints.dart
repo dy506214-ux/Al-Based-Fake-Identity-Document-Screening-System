@@ -4,6 +4,7 @@ class ApiEndpoints {
 
   // Authentication
   static const String login = '/api/auth/login';
+  static const String profile = '/api/auth/profile';
 
   // Document Management & Screening
   static const String uploadDocument = '/api/documents/upload';

@@ -36,17 +36,17 @@ sealed class ApiException implements Exception {
           );
         case 401:
           return UnauthorizedException(
-            serverMessage ?? 'Session expired or invalid credentials. Please sign in again.',
+            serverMessage ?? 'Invalid email or password, or your session is unauthorized.',
             statusCode: 401,
           );
         case 403:
           return ForbiddenException(
-            serverMessage ?? 'Access denied. You do not have permission for this resource.',
+            serverMessage ?? 'You are not authorized to access this application.',
             statusCode: 403,
           );
         case 404:
           return NotFoundException(
-            serverMessage ?? 'The requested resource or document was not found.',
+            serverMessage ?? 'Requested authentication service was not found.',
             statusCode: 404,
           );
         case 413:
@@ -56,7 +56,7 @@ sealed class ApiException implements Exception {
           );
         case 422:
           return ValidationException(
-            serverMessage ?? 'Document validation failed. Please check the uploaded data.',
+            serverMessage ?? 'Please check the entered information.',
             statusCode: 422,
             details: data,
           );
@@ -69,13 +69,13 @@ sealed class ApiException implements Exception {
         case 503:
         case 504:
           return ServerColdStartException(
-            'Screening server is temporarily waking up. Please try again in a few seconds.',
+            serverMessage ?? 'Screening server is temporarily waking up / unavailable. Please try again in a few seconds.',
             statusCode: statusCode,
           );
         case 500:
         default:
           return ServerException(
-            serverMessage ?? 'Internal screening server error ($statusCode). Please try again.',
+            serverMessage ?? 'Screening server encountered an internal error.',
             statusCode: statusCode,
           );
       }
@@ -86,8 +86,8 @@ sealed class ApiException implements Exception {
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.receiveTimeout:
       case DioExceptionType.sendTimeout:
-        return TimeoutException(
-          'Connection timed out while reaching the screening server. Please retry.',
+        return const TimeoutException(
+          'Connection timed out. Server response timed out. Please try again.',
         );
 
       case DioExceptionType.connectionError:
@@ -99,8 +99,13 @@ sealed class ApiException implements Exception {
             return const NoInternetException();
           }
         }
+        if (kIsWeb) {
+          return const NetworkException(
+            'Browser cross-origin restriction (CORS) prevented direct connection to screening server. Run on Android or launch Chrome with --disable-web-security.',
+          );
+        }
         return const ServerUnreachableException(
-          'Unable to reach screening server. The server may be waking up or offline. Please check your connection and retry.',
+          'Screening server is temporarily unavailable. Please try again.',
         );
 
       case DioExceptionType.cancel:
@@ -133,7 +138,15 @@ sealed class ApiException implements Exception {
 }
 
 class NoInternetException extends ApiException {
-  const NoInternetException([super.message = 'No internet connection. Please verify your connection and try again.']);
+  const NoInternetException([super.message = 'No internet connection. Please check your connection.']);
+}
+
+class NetworkException extends ApiException {
+  const NetworkException([super.message = 'A network error occurred. Please check your connection.']);
+}
+
+class ParseException extends ApiException {
+  const ParseException([super.message = 'Failed to parse response from screening server.']);
 }
 
 class ServerColdStartException extends ApiException {
@@ -145,7 +158,7 @@ class ServerUnreachableException extends ApiException {
 }
 
 class TimeoutException extends ApiException {
-  const TimeoutException([super.message = 'The screening server took too long to respond. Please try again.']);
+  const TimeoutException([super.message = 'Connection timed out. Server response timed out. Please try again.']);
 }
 
 class UnauthorizedException extends ApiException {

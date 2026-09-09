@@ -2,25 +2,30 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_exceptions.dart';
 import '../data/auth_repository_impl.dart';
 import '../domain/auth_repository.dart';
+import '../domain/user_model.dart';
 
 enum AuthStateStatus { initial, loading, authenticated, unauthenticated, error }
 
 class AuthState {
   final AuthStateStatus status;
   final String? errorMessage;
+  final UserModel? user;
 
   const AuthState({
     this.status = AuthStateStatus.initial,
     this.errorMessage,
+    this.user,
   });
 
   AuthState copyWith({
     AuthStateStatus? status,
     String? errorMessage,
+    UserModel? user,
   }) {
     return AuthState(
       status: status ?? this.status,
       errorMessage: errorMessage ?? this.errorMessage,
+      user: user ?? this.user,
     );
   }
 }
@@ -35,8 +40,7 @@ class AuthController extends Notifier<AuthState> {
   @override
   AuthState build() {
     _authRepository = ref.watch(authRepositoryProvider);
-    // We can't safely perform async side effects directly in build without returning Future,
-    // so we return initial state and then fire the check.
+    // Asynchronously verify existing session without blocking build
     Future.microtask(() => checkAuthStatus());
     return const AuthState();
   }
@@ -44,11 +48,11 @@ class AuthController extends Notifier<AuthState> {
   Future<void> checkAuthStatus() async {
     state = state.copyWith(status: AuthStateStatus.loading);
     try {
-      final isAuthenticated = await _authRepository.checkAuthStatus();
-      if (isAuthenticated) {
-        state = state.copyWith(status: AuthStateStatus.authenticated);
+      final user = await _authRepository.checkAuthStatus();
+      if (user != null) {
+        state = state.copyWith(status: AuthStateStatus.authenticated, user: user);
       } else {
-        state = state.copyWith(status: AuthStateStatus.unauthenticated);
+        state = state.copyWith(status: AuthStateStatus.unauthenticated, user: null);
       }
     } catch (e) {
       final message = ApiException.extractUserMessage(e);
@@ -56,14 +60,14 @@ class AuthController extends Notifier<AuthState> {
     }
   }
 
-  Future<void> login(String email, String password) async {
+  Future<void> login(String email, String password, {bool rememberMe = true}) async {
     // Guard against duplicate rapid clicks while a login request is already in-flight
     if (state.status == AuthStateStatus.loading) return;
 
     state = state.copyWith(status: AuthStateStatus.loading, errorMessage: null);
     try {
-      await _authRepository.login(email, password);
-      state = state.copyWith(status: AuthStateStatus.authenticated);
+      final user = await _authRepository.login(email, password, rememberMe: rememberMe);
+      state = state.copyWith(status: AuthStateStatus.authenticated, user: user);
     } catch (e) {
       final message = ApiException.extractUserMessage(e);
       state = state.copyWith(status: AuthStateStatus.error, errorMessage: message);
@@ -74,7 +78,7 @@ class AuthController extends Notifier<AuthState> {
     state = state.copyWith(status: AuthStateStatus.loading);
     try {
       await _authRepository.logout();
-      state = state.copyWith(status: AuthStateStatus.unauthenticated);
+      state = state.copyWith(status: AuthStateStatus.unauthenticated, user: null);
     } catch (e) {
       final message = ApiException.extractUserMessage(e);
       state = state.copyWith(status: AuthStateStatus.error, errorMessage: message);

@@ -1,6 +1,8 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import '../../../core/security/secure_storage_service.dart';
 import 'auth_controller.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -26,6 +28,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       vsync: this,
       duration: const Duration(seconds: 12),
     )..repeat();
+    _loadSavedCredentials();
+  }
+
+  Future<void> _loadSavedCredentials() async {
+    final storage = ref.read(secureStorageProvider);
+    final rememberMe = await storage.getRememberMe();
+    final savedEmail = await storage.getSavedEmail();
+    if (mounted) {
+      setState(() {
+        _rememberMe = rememberMe;
+        if (savedEmail != null && savedEmail.isNotEmpty) {
+          _emailController.text = savedEmail;
+        }
+      });
+    }
   }
 
   @override
@@ -41,7 +58,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
     if (email.isNotEmpty && password.isNotEmpty) {
-      ref.read(authControllerProvider.notifier).login(email, password);
+      ref.read(authControllerProvider.notifier).login(
+            email,
+            password,
+            rememberMe: _rememberMe,
+          );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter email and password')),
@@ -62,7 +83,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     final isLoading = authState.status == AuthStateStatus.loading;
 
     ref.listen<AuthState>(authControllerProvider, (previous, next) {
-      if (next.status == AuthStateStatus.error && next.errorMessage != null) {
+      if (next.status == AuthStateStatus.authenticated) {
+        if (context.mounted) {
+          context.go('/dashboard');
+        }
+      } else if (next.status == AuthStateStatus.error && next.errorMessage != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: Colors.red.shade800,

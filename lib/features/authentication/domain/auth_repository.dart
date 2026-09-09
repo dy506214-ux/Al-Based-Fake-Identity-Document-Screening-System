@@ -1,5 +1,7 @@
+import 'user_model.dart';
+
 abstract class AuthRepository {
-  Future<void> login(String email, String password);
+  Future<UserModel> login(String email, String password, {bool rememberMe = true});
   Future<void> logout();
-  Future<bool> checkAuthStatus();
+  Future<UserModel?> checkAuthStatus();
 }

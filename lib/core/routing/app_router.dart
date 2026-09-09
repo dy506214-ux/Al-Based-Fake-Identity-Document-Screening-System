@@ -16,19 +16,36 @@ import 'package:image_picker/image_picker.dart';
 import '../../features/history/presentation/history_screen.dart';
 import '../../core/widgets/main_shell.dart';
 
+class RouterNotifier extends ChangeNotifier {
+  final Ref _ref;
+
+  RouterNotifier(this._ref) {
+    _ref.listen<AuthState>(
+      authControllerProvider,
+      (previous, next) => notifyListeners(),
+    );
+  }
+}
+
+final routerNotifierProvider = Provider<RouterNotifier>((ref) {
+  return RouterNotifier(ref);
+});
+
 final appRouterProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authControllerProvider);
-  
+  final notifier = ref.watch(routerNotifierProvider);
+
   return GoRouter(
     initialLocation: '/login',
+    refreshListenable: notifier,
     redirect: (BuildContext context, GoRouterState state) {
+      final authState = ref.read(authControllerProvider);
       final isAuth = authState.status == AuthStateStatus.authenticated;
       final isSplash = state.uri.toString() == '/splash';
       final isLoggingIn = state.uri.toString() == '/login';
-      
+
       if (!isAuth && !isLoggingIn && !isSplash) return '/login';
       if (isAuth && (isLoggingIn || isSplash)) return '/dashboard';
-      
+
       return null;
     },
     routes: <RouteBase>[

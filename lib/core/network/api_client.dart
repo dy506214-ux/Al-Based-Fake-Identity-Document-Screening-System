@@ -84,7 +84,8 @@ class ApiClient {
         // Check if error is transient (timeout, connection failure, 502/503/504 gateway wakeup)
         final isTimeout = err.type == DioExceptionType.connectionTimeout ||
             err.type == DioExceptionType.receiveTimeout;
-        final isConnectionError = err.type == DioExceptionType.connectionError;
+        // On Flutter Web, connection errors are typically browser CORS preflight blocks which retries cannot fix.
+        final isConnectionError = !kIsWeb && err.type == DioExceptionType.connectionError;
         final isColdStartServer = status == 502 || status == 503 || status == 504;
 
         if (isTimeout || isConnectionError || isColdStartServer) {

@@ -101,7 +101,7 @@ sealed class ApiException implements Exception {
         }
         if (kIsWeb) {
           return const NetworkException(
-            'Browser cross-origin restriction (CORS) prevented direct connection to screening server. Run on Android or launch Chrome with --disable-web-security.',
+            'Unable to establish connection to screening server. Please verify network access.',
           );
         }
         return const ServerUnreachableException(

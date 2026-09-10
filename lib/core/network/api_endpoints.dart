@@ -1,6 +1,6 @@
 class ApiEndpoints {
   // Production backend URL
-  static const String baseUrl = 'https://sih26188-backend.onrender.com';
+  static const String baseUrl = 'https://sih26188-g7f9.onrender.com';
 
   // Health check
   static const String health = '/api/health';

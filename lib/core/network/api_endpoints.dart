@@ -1,6 +1,13 @@
+import 'package:flutter/foundation.dart';
+
 class ApiEndpoints {
-  // Production backend URL
-  static const String baseUrl = 'https://sih26188-g7f9.onrender.com';
+  // Dynamic base URL: In web debug/local testing connects to local backend (http://localhost:5000), otherwise Render production URL
+  static String get baseUrl {
+    if (kIsWeb && kDebugMode) {
+      return 'http://localhost:5000';
+    }
+    return 'https://sih26188-g7f9.onrender.com';
+  }
 
   // Health check
   static const String health = '/api/health';
@@ -29,4 +36,3 @@ class ApiEndpoints {
   static const String adminUsers = '/api/admin/users';
   static const String adminAuditLogs = '/api/admin/audit-logs';
 }
-

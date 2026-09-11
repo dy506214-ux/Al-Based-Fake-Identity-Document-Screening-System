@@ -17,10 +17,9 @@ class ApiClient {
   ApiClient(this._secureStorage)
       : _dio = Dio(BaseOptions(
           baseUrl: ApiEndpoints.baseUrl,
-          // Render free-tier cold standby can take 40-50s to spin up; 60s allows reliable connection
-          connectTimeout: const Duration(seconds: 60),
-          receiveTimeout: const Duration(seconds: 60),
-          sendTimeout: const Duration(seconds: 60),
+          connectTimeout: const Duration(seconds: 45),
+          receiveTimeout: const Duration(seconds: 45),
+          sendTimeout: kIsWeb ? null : const Duration(seconds: 45),
           headers: {
             'Accept': 'application/json',
           },
@@ -147,6 +146,7 @@ class ApiClient {
 
   Future<Response> get(String path, {Map<String, dynamic>? queryParameters}) async {
     try {
+      _dio.options.baseUrl = ApiEndpoints.baseUrl;
       return await _dio.get(path, queryParameters: queryParameters);
     } on DioException catch (e) {
       throw ApiException.fromDioException(e);
@@ -155,6 +155,7 @@ class ApiClient {
 
   Future<Response> post(String path, {dynamic data}) async {
     try {
+      _dio.options.baseUrl = ApiEndpoints.baseUrl;
       return await _dio.post(path, data: data);
     } on DioException catch (e) {
       throw ApiException.fromDioException(e);

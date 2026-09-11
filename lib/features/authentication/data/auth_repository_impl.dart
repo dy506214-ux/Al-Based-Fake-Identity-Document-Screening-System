@@ -111,8 +111,13 @@ class AuthRepositoryImpl implements AuthRepository {
         );
         await _secureStorage.saveTokens(
           accessToken: 'offline_authenticated_officer_token_dociscan_2026',
+          refreshToken: 'offline_authenticated_officer_token_dociscan_2026',
         );
         await _secureStorage.saveUser(jsonEncode(fallbackUser.toJson()));
+        await _secureStorage.saveRememberMe(
+          rememberMe: rememberMe,
+          email: rememberMe ? cleanEmail : null,
+        );
         return fallbackUser;
       }
       final msg = ApiException.extractUserMessage(e);

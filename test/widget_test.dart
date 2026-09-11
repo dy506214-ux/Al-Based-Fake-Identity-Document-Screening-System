@@ -32,7 +32,7 @@ import 'package:document_screening/features/authentication/presentation/auth_con
 void main() {
   group('ApiEndpoints Production Tests', () {
     test('BaseUrl is configured to real Render production backend', () {
-      expect(ApiEndpoints.baseUrl, 'https://sih26188-g7f9.onrender.com');
+      expect(ApiEndpoints.baseUrl, 'https://sih26188-backend.onrender.com');
       expect(ApiEndpoints.login, '/api/auth/login');
       expect(ApiEndpoints.uploadDocument, '/api/documents/upload');
       expect(ApiEndpoints.processDocument('123'), '/api/documents/123/process');

@@ -1,13 +1,6 @@
-import 'package:flutter/foundation.dart';
-
 class ApiEndpoints {
-  // Dynamic base URL: In web debug/local testing connects to local backend (http://localhost:5000), otherwise Render production URL
-  static String get baseUrl {
-    if (kIsWeb && kDebugMode) {
-      return 'http://localhost:5000';
-    }
-    return 'https://sih26188-g7f9.onrender.com';
-  }
+  // Authoritative Production Backend URL
+  static const String baseUrl = 'https://sih26188-backend.onrender.com';
 
   // Health check
   static const String health = '/api/health';

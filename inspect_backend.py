@@ -19,7 +19,7 @@ body = (
 ).encode('latin1')
 
 req = urllib.request.Request(
-    'https://sih26188-g7f9.onrender.com/api/documents/upload',
+    'https://al-based-fake-identity-document-i43e.onrender.com/api/documents/upload',
     data=body,
     headers={
         'Authorization': f'Bearer {token}',

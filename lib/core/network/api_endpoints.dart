@@ -1,6 +1,9 @@
 class ApiEndpoints {
-  // Authoritative Production Backend URL
-  static const String baseUrl = 'https://sih26188-backend.onrender.com';
+  // Authoritative Production Backend URL (Dedicated Render Server)
+  static const String baseUrl = 'https://al-based-fake-identity-document-i43e.onrender.com';
+
+  // Supabase Dedicated Endpoint
+  static const String supabaseUrl = 'https://rlkyqzbnqtsyjdfcjuac.supabase.co';
 
   // Health check
   static const String health = '/api/health';

@@ -33,7 +33,21 @@ const initDatabase = async () => {
       );
     `);
 
-    console.log('Database tables created successfully!');
+    // Seed/Upsert default Officer
+    const bcrypt = require('bcryptjs');
+    const officerEmail = 'officer@gmail.com';
+    const officerPassword = 'officer123';
+    const hash = await bcrypt.hash(officerPassword, 10);
+
+    await db.query(`
+      INSERT INTO users (name, email, password_hash, role)
+      VALUES ($1, $2, $3, $4)
+      ON CONFLICT (email) 
+      DO UPDATE SET password_hash = EXCLUDED.password_hash, role = 'OFFICER';
+    `, ['Chief Officer', officerEmail, hash, 'OFFICER']);
+
+    console.log(`Officer account seeded: ${officerEmail} / ${officerPassword}`);
+    console.log('Database tables and seed created successfully!');
   } catch (error) {
     console.error('Error creating database tables:', error);
   } finally {

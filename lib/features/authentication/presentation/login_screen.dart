@@ -14,8 +14,8 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen>
     with SingleTickerProviderStateMixin {
-  final _emailController = TextEditingController(text: 'officer@test.com');
-  final _passwordController = TextEditingController(text: '123456');
+  final _emailController = TextEditingController(text: 'officer@gmail.com');
+  final _passwordController = TextEditingController(text: 'officer123');
   bool _obscurePassword = true;
   bool _rememberMe = true;
   late final AnimationController _rotationController;

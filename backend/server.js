@@ -47,12 +47,12 @@ app.post('/api/auth/login', async (req, res) => {
     const result = await db.query('SELECT * FROM users WHERE email = $1', [email]);
     let user = result.rows[0];
 
-    // Auto-create an officer for testing if no users exist
-    if (!user && email === 'officer@agency.gov.in') {
-      const hash = await bcrypt.hash(password || 'password', 10);
+    // Auto-create an officer for testing if user does not exist yet
+    if (!user && (email === 'officer@gmail.com' || email === 'officer@agency.gov.in')) {
+      const hash = await bcrypt.hash(password || 'officer123', 10);
       const insertRes = await db.query(
         'INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING *',
-        ['Officer Test', email, hash, 'OFFICER']
+        ['Chief Officer', email, hash, 'OFFICER']
       );
       user = insertRes.rows[0];
     } else if (!user) {

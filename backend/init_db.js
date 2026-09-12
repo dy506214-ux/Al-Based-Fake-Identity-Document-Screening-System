@@ -61,6 +61,47 @@ const initDatabase = async () => {
       );
     `);
 
+    // 4. Create Screenings & Verification Pipeline tables
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS screenings (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID,
+        selected_document_type VARCHAR(50) NOT NULL,
+        detected_document_type VARCHAR(50) NOT NULL,
+        status VARCHAR(50) NOT NULL DEFAULT 'PROCESSING',
+        risk_score INT DEFAULT 0,
+        risk_level VARCHAR(20) DEFAULT 'LOW',
+        execution_duration_ms INT DEFAULT 0,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_screenings_user ON screenings(user_id);
+      CREATE INDEX IF NOT EXISTS idx_screenings_status ON screenings(status);
+
+      CREATE TABLE IF NOT EXISTS document_analyses (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        screening_id UUID REFERENCES screenings(id) ON DELETE CASCADE,
+        ocr_data JSONB,
+        mrz_data JSONB,
+        qr_data JSONB,
+        tamper_data JSONB,
+        authoritative_data JSONB,
+        risk_reasons JSONB,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_analyses_screening ON document_analyses(screening_id);
+
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        officer_id UUID,
+        action VARCHAR(100) NOT NULL,
+        resource_id VARCHAR(100),
+        ip_address VARCHAR(50),
+        details JSONB,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
     // 4. Seed/Upsert default Officer accounts in Supabase PostgreSQL
     const bcrypt = require('bcryptjs');
     const hash123456 = await bcrypt.hash('123456', 10);

@@ -130,4 +130,39 @@ class DocumentRepository {
       throw Exception(response.data?['message'] ?? 'Screening failed');
     }
   }
+
+  Future<ScreeningProcessResult> processDirectScreening({
+    required XFile file,
+    required String documentType,
+    String? qrPayload,
+    String? rawTextHint,
+    double? aspectRatio,
+    double? sharpnessScore,
+  }) async {
+    final bytes = await file.readAsBytes();
+    final fileName = file.name.isNotEmpty ? file.name : 'document.jpg';
+
+    final map = <String, dynamic>{
+      'document': MultipartFile.fromBytes(bytes, filename: fileName),
+      'selectedDocumentType': documentType,
+    };
+    if (qrPayload != null) map['qrPayload'] = qrPayload;
+    if (rawTextHint != null) map['rawTextHint'] = rawTextHint;
+    if (aspectRatio != null) map['aspectRatio'] = aspectRatio.toString();
+    if (sharpnessScore != null) map['sharpnessScore'] = sharpnessScore.toString();
+
+    final formData = FormData.fromMap(map);
+
+    final response = await _apiClient.post(
+      ApiEndpoints.screeningAnalyze,
+      data: formData,
+    );
+
+    if (response.data != null && response.data['success'] == true) {
+      final docId = response.data['screeningId']?.toString() ?? 'scr_${DateTime.now().millisecondsSinceEpoch}';
+      return ScreeningProcessResult.fromJson(docId, response.data as Map<String, dynamic>);
+    } else {
+      throw Exception(response.data?['message'] ?? 'Screening failed');
+    }
+  }
 }

@@ -1,6 +1,6 @@
 class ApiEndpoints {
-  // Authoritative Production Backend URL (Dedicated Render Server)
-  static const String baseUrl = 'https://al-based-fake-identity-document-i43e.onrender.com';
+  // Authoritative Production Backend URL (Render Server)
+  static const String baseUrl = 'https://sih26188-backend.onrender.com';
 
   // Supabase Dedicated Endpoint
   static const String supabaseUrl = 'https://rlkyqzbnqtsyjdfcjuac.supabase.co';
@@ -18,7 +18,14 @@ class ApiEndpoints {
   static const String generatePassword = '/api/auth/registration/generate-password';
   static const String createAccount = '/api/auth/registration/create-account';
 
-  // Document Management & Screening
+  // Real-Time Document Screening Pipeline
+  static const String screeningStart = '/api/screening/start';
+  static const String screeningDetect = '/api/screening/detect-document';
+  static const String screeningAnalyze = '/api/screening/analyze';
+  static const String screeningHistory = '/api/screening/history';
+  static String screeningResult(String id) => '/api/screening/$id';
+
+  // Document Management & Screening (Legacy compatible)
   static const String uploadDocument = '/api/documents/upload';
   static const String myDocuments = '/api/documents/my-documents';
   static String processDocument(String id) => '/api/documents/$id/process';

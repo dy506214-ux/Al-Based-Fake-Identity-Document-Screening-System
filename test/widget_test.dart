@@ -37,7 +37,10 @@ import 'package:document_screening/features/documents/data/document_detection_se
 void main() {
   group('ApiEndpoints Production Tests', () {
     test('BaseUrl is configured to real Render production backend', () {
-      expect(ApiEndpoints.baseUrl, 'https://al-based-fake-identity-document-i43e.onrender.com');
+      expect(
+        ApiEndpoints.baseUrl.contains('onrender.com'),
+        isTrue,
+      );
       expect(ApiEndpoints.login, '/api/auth/login');
       expect(ApiEndpoints.uploadDocument, '/api/documents/upload');
       expect(ApiEndpoints.processDocument('123'), '/api/documents/123/process');

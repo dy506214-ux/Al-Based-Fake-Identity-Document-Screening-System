@@ -352,7 +352,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                       ),
                       const SizedBox(height: 14),
 
-                      // 3. Generate New Email ID with AI GENERATE Button
+                      // 3. Generate New Email ID with SEPARATE AI GENERATE Button
                       _buildEmailGeneratorField(
                         controller: _emailController,
                         key: const Key('registerEmailField'),
@@ -362,7 +362,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                       ),
                       const SizedBox(height: 14),
 
-                      // 4. Generate New Password with AI GENERATE Button & Toggle
+                      // 4. Generate New Password with SEPARATE AI GENERATE Button & Toggle
                       _buildPasswordGeneratorField(
                         controller: _passwordController,
                         key: const Key('registerPasswordField'),
@@ -386,7 +386,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                           key: const Key('createAccountButton'),
                           onPressed: isBusy ? null : _handleCreateAccount,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF2D5A27), // Tactical deep green
+                            backgroundColor: const Color(0xFF1E4620), // Dark tactical green
                             foregroundColor: Colors.white,
                             elevation: 2,
                             shape: RoundedRectangleBorder(
@@ -451,7 +451,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                             child: const Text(
                               'Login here',
                               style: TextStyle(
-                                color: Color(0xFFF59E0B),
+                                color: Color(0xFF1E4620),
                                 fontSize: 13,
                                 fontWeight: FontWeight.w800,
                               ),
@@ -613,63 +613,49 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
           ),
         ),
         const SizedBox(height: 6),
-        TextField(
-          key: key,
-          controller: controller,
-          enabled: enabled,
-          keyboardType: TextInputType.emailAddress,
-          style: const TextStyle(
-            color: Color(0xFF0F172A),
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-          ),
-          decoration: InputDecoration(
-            hintText: 'dhirendraofficer@dociscan.gov.in',
-            hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 12.5),
-            prefixIcon: const Icon(Icons.alternate_email_rounded, color: Color(0xFF2D5A27), size: 19),
-            suffixIcon: Padding(
-              padding: const EdgeInsets.only(right: 6),
-              child: TextButton.icon(
-                key: const Key('generateEmailButton'),
-                onPressed: enabled && !isLoading ? onGenerate : null,
-                style: TextButton.styleFrom(
-                  backgroundColor: const Color(0xFFFFFBEB),
-                  foregroundColor: const Color(0xFFD97706),
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    side: const BorderSide(color: Color(0xFFF59E0B), width: 1),
-                  ),
-                ),
-                icon: isLoading
-                    ? const SizedBox(
-                        width: 12,
-                        height: 12,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFD97706)),
-                      )
-                    : const Icon(Icons.auto_awesome_rounded, size: 13, color: Color(0xFFD97706)),
-                label: Text(
-                  isLoading ? 'GENERATING...' : 'AI GENERATE',
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: SizedBox(
+                height: 48,
+                child: TextField(
+                  key: key,
+                  controller: controller,
+                  enabled: enabled,
+                  keyboardType: TextInputType.emailAddress,
                   style: const TextStyle(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.5,
+                    color: Color(0xFF0F172A),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'dhirendraofficer@dociscan.gov.in',
+                    hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+                    prefixIcon: const Icon(Icons.alternate_email_rounded, color: Color(0xFF2D5A27), size: 19),
+                    filled: true,
+                    fillColor: const Color(0xFFF8FAFC),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.grey.shade300),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFF2D5A27), width: 1.8),
+                    ),
                   ),
                 ),
               ),
             ),
-            filled: true,
-            fillColor: const Color(0xFFF8FAFC),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey.shade300),
+            const SizedBox(width: 8),
+            _AiGenerateButton(
+              buttonKey: const Key('generateEmailButton'),
+              enabled: enabled,
+              isLoading: isLoading,
+              onGenerate: onGenerate,
             ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFF2D5A27), width: 1.8),
-            ),
-          ),
+          ],
         ),
       ],
     );
@@ -696,82 +682,142 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
           ),
         ),
         const SizedBox(height: 6),
-        TextField(
-          key: key,
-          controller: controller,
-          enabled: enabled,
-          obscureText: !isPasswordVisible,
-          style: const TextStyle(
-            color: Color(0xFF0F172A),
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.0,
-            fontFamily: 'Courier',
-          ),
-          decoration: InputDecoration(
-            hintText: 'Dh!7Kp@29Qx',
-            hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 12.5, letterSpacing: 0),
-            prefixIcon: const Icon(Icons.lock_outline_rounded, color: Color(0xFF2D5A27), size: 19),
-            suffixIcon: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  key: const Key('toggleRegisterPasswordVisibility'),
-                  icon: Icon(
-                    isPasswordVisible ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                    size: 18,
-                    color: Colors.grey.shade700,
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: SizedBox(
+                height: 48,
+                child: TextField(
+                  key: key,
+                  controller: controller,
+                  enabled: enabled,
+                  obscureText: !isPasswordVisible,
+                  style: const TextStyle(
+                    color: Color(0xFF0F172A),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.0,
+                    fontFamily: 'Courier',
                   ),
-                  onPressed: onToggleVisibility,
-                  tooltip: isPasswordVisible ? 'Hide Password' : 'Show Password',
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(right: 6),
-                  child: TextButton.icon(
-                    key: const Key('generatePasswordButton'),
-                    onPressed: enabled && !isLoading ? onGenerate : null,
-                    style: TextButton.styleFrom(
-                      backgroundColor: const Color(0xFFFFFBEB),
-                      foregroundColor: const Color(0xFFD97706),
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        side: const BorderSide(color: Color(0xFFF59E0B), width: 1),
+                  decoration: InputDecoration(
+                    hintText: '85Pi!PTFx%yt',
+                    hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 12, letterSpacing: 0),
+                    prefixIcon: const Icon(Icons.lock_outline_rounded, color: Color(0xFF2D5A27), size: 19),
+                    suffixIcon: IconButton(
+                      key: const Key('toggleRegisterPasswordVisibility'),
+                      icon: Icon(
+                        isPasswordVisible ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                        size: 19,
+                        color: Colors.grey.shade700,
                       ),
+                      onPressed: onToggleVisibility,
+                      tooltip: isPasswordVisible ? 'Hide Password' : 'Show Password',
                     ),
-                    icon: isLoading
-                        ? const SizedBox(
-                            width: 12,
-                            height: 12,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFD97706)),
-                          )
-                        : const Icon(Icons.auto_awesome_rounded, size: 13, color: Color(0xFFD97706)),
-                    label: Text(
-                      isLoading ? 'GENERATING...' : 'AI GENERATE',
-                      style: const TextStyle(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.5,
-                      ),
+                    filled: true,
+                    fillColor: const Color(0xFFF8FAFC),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.grey.shade300),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFF2D5A27), width: 1.8),
                     ),
                   ),
                 ),
-              ],
+              ),
             ),
-            filled: true,
-            fillColor: const Color(0xFFF8FAFC),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey.shade300),
+            const SizedBox(width: 8),
+            _AiGenerateButton(
+              buttonKey: const Key('generatePasswordButton'),
+              enabled: enabled,
+              isLoading: isLoading,
+              onGenerate: onGenerate,
             ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFF2D5A27), width: 1.8),
-            ),
-          ),
+          ],
         ),
       ],
+    );
+  }
+}
+
+class _AiGenerateButton extends StatelessWidget {
+  final Key? buttonKey;
+  final bool enabled;
+  final bool isLoading;
+  final VoidCallback onGenerate;
+
+  const _AiGenerateButton({
+    this.buttonKey,
+    required this.enabled,
+    required this.isLoading,
+    required this.onGenerate,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 48,
+      child: ElevatedButton(
+        key: buttonKey,
+        onPressed: enabled && !isLoading ? onGenerate : null,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF1E4620), // Dark tactical green
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: const Color(0xFF1E4620).withValues(alpha: 0.65),
+          disabledForegroundColor: Colors.white.withValues(alpha: 0.7),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: isLoading
+            ? const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 13,
+                    height: 13,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  ),
+                  SizedBox(width: 6),
+                  Text(
+                    'Generating...',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              )
+            : const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.auto_awesome_rounded,
+                    size: 14,
+                    color: Colors.white,
+                  ),
+                  SizedBox(width: 5),
+                  Text(
+                    'AI Generate',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                ],
+              ),
+      ),
     );
   }
 }

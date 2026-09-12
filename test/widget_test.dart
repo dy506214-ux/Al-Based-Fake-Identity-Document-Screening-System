@@ -1105,7 +1105,7 @@ void main() {
         expect(find.text('+91'), findsOneWidget);
         expect(find.text('Generate New Email ID'), findsOneWidget);
         expect(find.text('Generate New Password'), findsOneWidget);
-        expect(find.text('AI GENERATE'), findsNWidgets(2));
+        expect(find.text('AI Generate'), findsNWidgets(2));
         expect(find.text('CREATE ACCOUNT'), findsOneWidget);
         expect(find.text('Login here'), findsOneWidget);
         expect(tester.takeException(), isNull);

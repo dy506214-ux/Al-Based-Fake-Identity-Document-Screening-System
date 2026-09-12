@@ -1,4 +1,12 @@
-require('dotenv').config({ path: '../new_backend.env' });
+const path = require('path');
+const dotenv = require('dotenv');
+
+// Load environment variables from all available config locations
+dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, '../new_backend.env') });
+dotenv.config({ path: path.resolve(__dirname, '.env') });
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
 const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
@@ -64,48 +72,107 @@ const upload = multer({ storage: multer.memoryStorage() });
 const registeredOfficersStore = new Map();
 const activeOtpStore = new Map();
 
-// Helper: Normalize Indian Mobile Number (+919876543210)
+// Helper: Normalize Indian Mobile Number to canonical format (+919876543210)
 const normalizeMobile = (rawMobile) => {
   if (!rawMobile) return null;
-  const digits = rawMobile.replace(/\D/g, '');
-  if (digits.length === 10) {
+  const digits = rawMobile.toString().replace(/\D/g, '');
+  if (digits.length === 10 && /^[6-9]\d{9}$/.test(digits)) {
     return `+91${digits}`;
-  } else if (digits.length === 12 && digits.startsWith('91')) {
+  } else if (digits.length === 12 && digits.startsWith('91') && /^91[6-9]\d{9}$/.test(digits)) {
     return `+${digits}`;
   }
   return null;
 };
 
-// Helper: Real SMS Gateway Dispatcher
+// Helper: Real Fast2SMS Gateway Dispatcher (Production Indian Telecom SMS)
 const sendSmsOtp = async (mobile, otp) => {
-  console.log(`[SMS Gateway] Sending 6-digit OTP to ${mobile}...`);
-  // If Twilio or Fast2SMS keys are provided in environment:
-  if (process.env.FAST2SMS_API_KEY) {
-    try {
-      const numbers = mobile.replace('+91', '');
-      const response = await fetch('https://www.fast2sms.com/dev/bulkV2', {
-        method: 'POST',
-        headers: {
-          'authorization': process.env.FAST2SMS_API_KEY,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          route: 'otp',
-          variables_values: otp,
-          numbers: numbers
-        })
-      });
-      const data = await response.json();
-      console.log('[Fast2SMS Result]:', data);
-      return true;
-    } catch (err) {
-      console.error('[Fast2SMS Error]:', err.message);
-    }
+  const apiKey = (process.env.FAST2SMS_API_KEY || process.env.SMS_API_KEY || process.env.FAST2SMS_KEY || '').trim();
+  const canonical10Digits = mobile.replace(/\D/g, '').slice(-10);
+  const maskedMobile = canonical10Digits.length === 10
+    ? `******${canonical10Digits.slice(6)}`
+    : '******';
+
+  console.log(`[SMS Gateway] Requesting OTP dispatch: mobile=${maskedMobile}, provider=Fast2SMS`);
+
+  if (!apiKey) {
+    const errorMsg = 'Fast2SMS API Key is not configured on the backend server. Please configure FAST2SMS_API_KEY in Render environment variables.';
+    console.error(`[SMS Gateway Error] ${errorMsg}`);
+    throw new Error(errorMsg);
   }
 
-  // Fallback to direct simulated SMS transmission
-  console.log(`[SMS Gateway] Dispatched OTP to ${mobile} via Secure Telecom Link`);
-  return true;
+  const route = process.env.FAST2SMS_ROUTE || 'otp';
+  let payload;
+
+  if (route === 'otp') {
+    payload = {
+      route: 'otp',
+      variables_values: otp.toString(),
+      numbers: canonical10Digits
+    };
+  } else if (route === 'q') {
+    payload = {
+      route: 'q',
+      message: `Your DocIScan Officer verification OTP is ${otp}. Valid for 5 minutes. Do not share this with anyone.`,
+      language: 'english',
+      numbers: canonical10Digits
+    };
+  } else {
+    payload = {
+      route: route,
+      variables_values: otp.toString(),
+      numbers: canonical10Digits
+    };
+  }
+
+  let response;
+  try {
+    response = await fetch('https://www.fast2sms.com/dev/bulkV2', {
+      method: 'POST',
+      headers: {
+        'authorization': apiKey,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+  } catch (netErr) {
+    console.error(`[SMS Gateway Network Error] Failed to reach Fast2SMS: ${netErr.message}`);
+    throw new Error(`SMS Provider connection failed: ${netErr.message}`);
+  }
+
+  const responseText = await response.text();
+  let responseData;
+  try {
+    responseData = JSON.parse(responseText);
+  } catch (_) {
+    console.error(`[SMS Gateway Error] Non-JSON response from Fast2SMS: status=${response.status}, body=${responseText.slice(0, 100)}`);
+    throw new Error(`SMS Provider returned HTTP ${response.status}: Unable to deliver SMS`);
+  }
+
+  // Safe logging: Never log the raw API key or OTP
+  const requestId = responseData.request_id || responseData.requestId || 'N/A';
+  console.log(`[SMS Gateway Result] mobile=${maskedMobile}, provider=Fast2SMS, HTTP_status=${response.status}, return=${responseData.return}, requestId=${requestId}`);
+
+  if (responseData.return === true || responseData.status === 'success') {
+    return {
+      success: true,
+      requestId: requestId,
+      message: Array.isArray(responseData.message) ? responseData.message.join(' ') : (responseData.message || 'SMS sent successfully')
+    };
+  }
+
+  // Extract precise error message from provider
+  let errMsg = 'SMS delivery failed at carrier gateway';
+  if (Array.isArray(responseData.message) && responseData.message.length > 0) {
+    errMsg = responseData.message.join(', ');
+  } else if (typeof responseData.message === 'string' && responseData.message.trim().length > 0) {
+    errMsg = responseData.message;
+  } else if (responseData.status_code) {
+    errMsg = `Fast2SMS error code ${responseData.status_code}`;
+  }
+
+  console.error(`[SMS Gateway Delivery Failed] mobile=${maskedMobile}, error="${errMsg}"`);
+  throw new Error(`SMS Provider Error: ${errMsg}`);
 };
 
 // -------------------------------------------------------------
@@ -191,7 +258,11 @@ app.post('/api/auth/registration/send-otp', async (req, res) => {
     const otpHash = await bcrypt.hash(rawOtp, 10);
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes validity
 
-    // 4. Save to OTP table in DB or Store
+    // 4. Dispatch Real SMS via Fast2SMS FIRST
+    // If the provider fails, this throws and no fake verification session is committed!
+    const smsResult = await sendSmsOtp(normalized, rawOtp);
+
+    // 5. Commit verification state only after confirmed provider dispatch
     try {
       await db.query(
         `INSERT INTO otp_verifications (mobile, otp_hash, expires_at)
@@ -202,24 +273,26 @@ app.post('/api/auth/registration/send-otp', async (req, res) => {
 
     activeOtpStore.set(normalized, {
       name: name.trim(),
-      rawOtp: rawOtp, // cached for high-availability verify
+      rawOtp: rawOtp, // cached for resilient verification
       otpHash: otpHash,
       attempts: 0,
       expiresAt: expiresAt.getTime(),
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      requestId: smsResult.requestId
     });
-
-    // 5. Send Real SMS
-    await sendSmsOtp(normalized, rawOtp);
 
     return res.json({
       success: true,
-      message: `Verification code sent successfully to ${normalized}.`,
-      cooldownSeconds: 60
+      message: `Verification code dispatched to ${normalized}.`,
+      cooldownSeconds: 60,
+      requestId: smsResult.requestId
     });
   } catch (err) {
-    console.error('Send OTP Error:', err);
-    res.status(500).json({ success: false, message: 'Unable to send verification code. Please try again.' });
+    console.error('Send OTP Error:', err.message || err);
+    return res.status(502).json({
+      success: false,
+      message: err.message || 'Unable to send verification code. Please try again.'
+    });
   }
 });
 

@@ -90,9 +90,9 @@ class AuthController extends Notifier<AuthState> {
     }
   }
 
-  Future<String> generateOfficerPassword() async {
+  Future<String> generateOfficerPassword({String? name}) async {
     try {
-      return await _authRepository.generateOfficerPassword();
+      return await _authRepository.generateOfficerPassword(name: name);
     } catch (e) {
       final message = ApiException.extractUserMessage(e);
       state = state.copyWith(status: AuthStateStatus.error, errorMessage: message);

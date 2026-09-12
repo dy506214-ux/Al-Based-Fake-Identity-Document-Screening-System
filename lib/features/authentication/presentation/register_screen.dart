@@ -87,13 +87,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
   }
 
   Future<void> _handleGeneratePassword() async {
+    final rawName = _nameController.text.trim();
     setState(() {
       _isGeneratingPassword = true;
       _errorMessage = null;
     });
 
     try {
-      final password = await ref.read(authControllerProvider.notifier).generateOfficerPassword();
+      final password = await ref
+          .read(authControllerProvider.notifier)
+          .generateOfficerPassword(name: rawName);
 
       if (!mounted) return;
       setState(() {
@@ -103,29 +106,18 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
       });
     } catch (e) {
       if (!mounted) return;
-      // Fallback cryptographic client generation if offline
-      final uppers = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
-      final lowers = 'abcdefghijkmnopqrstuvwxyz';
-      final digits = '23456789';
-      final symbols = '!@#\$%&*';
+      // Easy-to-remember name-derived fallback: e.g., Dhirendra@731 or Abhay#624
+      final parts = rawName.split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+      String firstName = parts.isNotEmpty ? parts.first.replaceAll(RegExp(r'[^a-zA-Z]'), '') : 'Officer';
+      if (firstName.isEmpty || firstName.length < 2) firstName = 'Officer';
+      final cleanName = firstName[0].toUpperCase() + firstName.substring(1).toLowerCase();
+
       final rnd = math.Random.secure();
-      final list = [
-        uppers[rnd.nextInt(uppers.length)],
-        uppers[rnd.nextInt(uppers.length)],
-        lowers[rnd.nextInt(lowers.length)],
-        lowers[rnd.nextInt(lowers.length)],
-        digits[rnd.nextInt(digits.length)],
-        digits[rnd.nextInt(digits.length)],
-        symbols[rnd.nextInt(symbols.length)],
-        symbols[rnd.nextInt(symbols.length)],
-      ];
-      final all = uppers + lowers + digits + symbols;
-      while (list.length < 12) {
-        list.add(all[rnd.nextInt(all.length)]);
-      }
-      list.shuffle(rnd);
+      final special = rnd.nextBool() ? '@' : '#';
+      final digits = (100 + rnd.nextInt(899)).toString(); // 3 dynamic digits
+
       setState(() {
-        _passwordController.text = list.join();
+        _passwordController.text = '$cleanName$special$digits';
         _isPasswordVisible = true;
         _isGeneratingPassword = false;
       });

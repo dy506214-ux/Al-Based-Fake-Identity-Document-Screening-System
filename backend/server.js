@@ -134,34 +134,39 @@ const generateLoginId = async (fullName, mobileDigits, variantIndex = 0) => {
   }
 };
 
-// Helper: Generate Cryptographically Secure Strong Password (12+ chars: upper, lower, digits, symbols)
-const generateSecurePassword = (length = 12) => {
-  const uppers = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
-  const lowers = 'abcdefghijkmnopqrstuvwxyz';
-  const digits = '23456789';
-  const symbols = '!@#$%&*';
+// Helper: Generate Easy-to-Remember Name-Derived Secure Password (e.g. Saurabh@482, Dhirendra@731, Abhay#624)
+const generateSecurePassword = (name = 'Officer') => {
+  let cleanName = (name || '').trim();
+  // Extract first meaningful name segment
+  cleanName = cleanName.split(/\s+/)[0] || 'Officer';
+  // Remove any non-alphabetic characters
+  cleanName = cleanName.replace(/[^a-zA-Z]/g, '');
+  if (!cleanName || cleanName.length < 2) {
+    cleanName = 'Officer';
+  }
+  // Preserve readable title-case: First char uppercase, rest lowercase
+  cleanName = cleanName.charAt(0).toUpperCase() + cleanName.slice(1).toLowerCase();
 
-  let pwd = [];
-  // Ensure at least 2 of each required character category
-  for (let i = 0; i < 2; i++) {
-    pwd.push(uppers[crypto.randomInt(0, uppers.length)]);
-    pwd.push(lowers[crypto.randomInt(0, lowers.length)]);
-    pwd.push(digits[crypto.randomInt(0, digits.length)]);
-    pwd.push(symbols[crypto.randomInt(0, symbols.length)]);
+  // Special character: randomly choose @ or #
+  const specialChars = ['@', '#'];
+  const special = specialChars[crypto.randomInt(0, specialChars.length)];
+
+  // Dynamic 3-4 digits (not predictable like 123, 111, 000, etc.)
+  let digits;
+  while (true) {
+    // 3 or 4 digits: range 100 to 9999
+    const num = crypto.randomInt(100, 9999);
+    const numStr = num.toString();
+    // Exclude predictable sequences
+    const isSequential = numStr === '123' || numStr === '1234' || numStr === '234' || numStr === '345' || numStr === '456' || numStr === '567' || numStr === '678' || numStr === '789';
+    const isRepeated = /^(\d)\1+$/.test(numStr);
+    if (!isSequential && !isRepeated) {
+      digits = numStr;
+      break;
+    }
   }
 
-  const allChars = uppers + lowers + digits + symbols;
-  while (pwd.length < Math.max(12, length)) {
-    pwd.push(allChars[crypto.randomInt(0, allChars.length)]);
-  }
-
-  // Shuffle securely
-  for (let i = pwd.length - 1; i > 0; i--) {
-    const j = crypto.randomInt(0, i + 1);
-    [pwd[i], pwd[j]] = [pwd[j], pwd[i]];
-  }
-
-  return pwd.join('');
+  return `${cleanName}${special}${digits}`;
 };
 
 // Helper: Real Fast2SMS Gateway Dispatcher (Production Indian Telecom SMS)
@@ -324,11 +329,12 @@ app.post('/api/auth/registration/generate-login-id', async (req, res) => {
 });
 
 // -------------------------------------------------------------
-// REGISTRATION: GENERATE AI SECURE PASSWORD
+// REGISTRATION: GENERATE AI SECURE PASSWORD (NAME-DERIVED)
 // -------------------------------------------------------------
 app.post('/api/auth/registration/generate-password', async (req, res) => {
+  const name = req.body?.name || req.query?.name || 'Officer';
   try {
-    const password = generateSecurePassword(12);
+    const password = generateSecurePassword(name);
     return res.json({
       success: true,
       password: password
@@ -493,7 +499,7 @@ app.post('/api/auth/registration/create-credentials', async (req, res) => {
 
   const raw10 = (mobile || '').replace(/\D/g, '').slice(-10);
   const genEmail = await generateLoginId((name || 'officer').trim(), raw10);
-  const genPassword = generateSecurePassword(12);
+  const genPassword = generateSecurePassword(name);
   req.body.email = genEmail;
   req.body.password = genPassword;
   req.url = '/api/auth/registration/create-account';

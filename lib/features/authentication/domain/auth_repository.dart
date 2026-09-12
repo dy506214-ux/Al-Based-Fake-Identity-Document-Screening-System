@@ -26,7 +26,7 @@ class GeneratedCredentials {
 abstract class AuthRepository {
   Future<UserModel> login(String email, String password, {bool rememberMe = true});
   Future<String> generateOfficerEmail({required String name, required String mobile, int variantIndex = 0});
-  Future<String> generateOfficerPassword();
+  Future<String> generateOfficerPassword({String? name});
   Future<GeneratedCredentials> createOfficerAccount({
     required String name,
     required String mobile,

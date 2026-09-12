@@ -165,11 +165,13 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<String> generateOfficerPassword() async {
+  Future<String> generateOfficerPassword({String? name}) async {
     try {
       final response = await _apiClient.post(
         ApiEndpoints.generatePassword,
-        data: {},
+        data: {
+          if (name != null && name.trim().isNotEmpty) 'name': name.trim(),
+        },
       );
 
       if (response.data != null && response.data['success'] == true) {

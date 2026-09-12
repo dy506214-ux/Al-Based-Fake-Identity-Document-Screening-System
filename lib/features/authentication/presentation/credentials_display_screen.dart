@@ -232,7 +232,7 @@ Keep this securely for future logins.''';
                         ),
                         const SizedBox(height: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                           decoration: BoxDecoration(
                             color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
                             borderRadius: BorderRadius.circular(10),
@@ -242,8 +242,8 @@ Keep this securely for future logins.''';
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.badge_outlined, size: 19, color: AppColors.primary),
-                              const SizedBox(width: 8),
+                              const Icon(Icons.badge_outlined, size: 17, color: AppColors.primary),
+                              const SizedBox(width: 6),
                               Expanded(
                                 child: SingleChildScrollView(
                                   scrollDirection: Axis.horizontal,
@@ -256,22 +256,22 @@ Keep this securely for future logins.''';
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 6),
+                              const SizedBox(width: 4),
                               OutlinedButton.icon(
                                 key: const Key('copyLoginIdButton'),
                                 onPressed: _copyLoginId,
                                 style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                                   minimumSize: Size.zero,
                                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                 ),
                                 icon: Icon(
                                   _copiedLoginId ? Icons.check_rounded : Icons.copy_rounded,
-                                  size: 13,
+                                  size: 11,
                                 ),
                                 label: Text(
                                   _copiedLoginId ? 'Copied' : 'Copy',
-                                  style: const TextStyle(fontSize: 11),
+                                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
                                 ),
                               ),
                             ],
@@ -290,7 +290,7 @@ Keep this securely for future logins.''';
                         ),
                         const SizedBox(height: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                           decoration: BoxDecoration(
                             color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
                             borderRadius: BorderRadius.circular(10),
@@ -300,8 +300,8 @@ Keep this securely for future logins.''';
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.lock_outline_rounded, size: 19, color: AppColors.primary),
-                              const SizedBox(width: 8),
+                              const Icon(Icons.lock_outline_rounded, size: 17, color: AppColors.primary),
+                              const SizedBox(width: 6),
                               Expanded(
                                 child: SingleChildScrollView(
                                   scrollDirection: Axis.horizontal,
@@ -318,16 +318,16 @@ Keep this securely for future logins.''';
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 4),
+                              const SizedBox(width: 2),
                               IconButton(
                                 key: const Key('togglePasswordVisibilityButton'),
                                 padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                                constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
                                 icon: Icon(
                                   _isPasswordVisible
                                       ? Icons.visibility_off_outlined
                                       : Icons.visibility_outlined,
-                                  size: 18,
+                                  size: 16,
                                   color: theme.iconTheme.color,
                                 ),
                                 onPressed: () {
@@ -342,17 +342,17 @@ Keep this securely for future logins.''';
                                 key: const Key('copyPasswordButton'),
                                 onPressed: _copyPassword,
                                 style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                                   minimumSize: Size.zero,
                                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                 ),
                                 icon: Icon(
                                   _copiedPassword ? Icons.check_rounded : Icons.copy_rounded,
-                                  size: 13,
+                                  size: 11,
                                 ),
                                 label: Text(
                                   _copiedPassword ? 'Copied' : 'Copy',
-                                  style: const TextStyle(fontSize: 11),
+                                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
                                 ),
                               ),
                             ],

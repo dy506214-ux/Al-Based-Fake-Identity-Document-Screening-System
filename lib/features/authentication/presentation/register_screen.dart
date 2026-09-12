@@ -624,10 +624,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                   decoration: InputDecoration(
                     hintText: 'dhirendraofficer@dociscan.gov.in',
                     hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 12),
-                    prefixIcon: const Icon(Icons.alternate_email_rounded, color: Color(0xFF2D5A27), size: 19),
+                    prefixIcon: const Icon(Icons.alternate_email_rounded, color: Color(0xFF2D5A27), size: 18),
                     filled: true,
                     fillColor: const Color(0xFFF8FAFC),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(color: Colors.grey.shade300),
@@ -640,7 +640,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                 ),
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 6),
             _AiGenerateButton(
               buttonKey: const Key('generateEmailButton'),
               enabled: enabled,
@@ -695,12 +695,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                   decoration: InputDecoration(
                     hintText: '85Pi!PTFx%yt',
                     hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 12, letterSpacing: 0),
-                    prefixIcon: const Icon(Icons.lock_outline_rounded, color: Color(0xFF2D5A27), size: 19),
+                    prefixIcon: const Icon(Icons.lock_outline_rounded, color: Color(0xFF2D5A27), size: 18),
                     suffixIcon: IconButton(
                       key: const Key('toggleRegisterPasswordVisibility'),
                       icon: Icon(
                         isPasswordVisible ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                        size: 19,
+                        size: 18,
                         color: Colors.grey.shade700,
                       ),
                       onPressed: onToggleVisibility,
@@ -708,7 +708,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                     ),
                     filled: true,
                     fillColor: const Color(0xFFF8FAFC),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(color: Colors.grey.shade300),
@@ -721,7 +721,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                 ),
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 6),
             _AiGenerateButton(
               buttonKey: const Key('generatePasswordButton'),
               enabled: enabled,
@@ -760,7 +760,7 @@ class _AiGenerateButton extends StatelessWidget {
           foregroundColor: Colors.white,
           disabledBackgroundColor: const Color(0xFF1E4620).withValues(alpha: 0.65),
           disabledForegroundColor: Colors.white.withValues(alpha: 0.7),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -771,18 +771,18 @@ class _AiGenerateButton extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   SizedBox(
-                    width: 13,
-                    height: 13,
+                    width: 12,
+                    height: 12,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
                       color: Colors.white,
                     ),
                   ),
-                  SizedBox(width: 6),
+                  SizedBox(width: 4),
                   Text(
                     'Generating...',
                     style: TextStyle(
-                      fontSize: 11.5,
+                      fontSize: 10.5,
                       fontWeight: FontWeight.w700,
                       color: Colors.white,
                     ),
@@ -794,17 +794,17 @@ class _AiGenerateButton extends StatelessWidget {
                 children: [
                   Icon(
                     Icons.auto_awesome_rounded,
-                    size: 14,
+                    size: 13,
                     color: Colors.white,
                   ),
-                  SizedBox(width: 5),
+                  SizedBox(width: 4),
                   Text(
                     'AI Generate',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 11,
                       fontWeight: FontWeight.w700,
                       color: Colors.white,
-                      letterSpacing: 0.2,
+                      letterSpacing: 0.1,
                     ),
                   ),
                 ],

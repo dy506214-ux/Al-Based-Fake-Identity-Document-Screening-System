@@ -193,7 +193,7 @@ Keep this securely for future logins.''';
                           context,
                           icon: Icons.phone_android_rounded,
                           label: 'Registered Mobile',
-                          value: '+91 ${widget.credentials.mobile}',
+                          value: _formatDisplayMobile(widget.credentials.mobile),
                         ),
                       ],
                     ),
@@ -453,5 +453,14 @@ Keep this securely for future logins.''';
         ),
       ],
     );
+  }
+
+  String _formatDisplayMobile(String mobile) {
+    final digits = mobile.replaceAll(RegExp(r'\D'), '');
+    if (digits.length >= 10) {
+      final last10 = digits.substring(digits.length - 10);
+      return '+91 $last10';
+    }
+    return mobile.startsWith('+') ? mobile : '+91 $mobile';
   }
 }

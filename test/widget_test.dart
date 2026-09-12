@@ -1362,8 +1362,9 @@ class _MockTestAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<String> generateOfficerPassword() async {
-    return 'Dh!7Kp@29Qx#';
+  Future<String> generateOfficerPassword({String? name}) async {
+    final clean = (name != null && name.isNotEmpty) ? name.split(' ').first : 'Officer';
+    return '$clean@731';
   }
 
   @override

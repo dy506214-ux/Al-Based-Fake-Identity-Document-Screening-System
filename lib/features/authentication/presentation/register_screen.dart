@@ -329,7 +329,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                         controller: _nameController,
                         key: const Key('registerFullNameField'),
                         label: 'Full Name',
-                        hintText: 'e.g., Dhirendra Kumar Yadav',
                         icon: Icons.person_outline_rounded,
                         textCapitalization: TextCapitalization.words,
                         enabled: !isBusy,
@@ -466,7 +465,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
     required TextEditingController controller,
     required Key key,
     required String label,
-    required String hintText,
     required IconData icon,
     TextCapitalization textCapitalization = TextCapitalization.none,
     bool enabled = true,
@@ -494,8 +492,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
             fontWeight: FontWeight.w600,
           ),
           decoration: InputDecoration(
-            hintText: hintText,
-            hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
             prefixIcon: Icon(icon, color: const Color(0xFF2D5A27), size: 19),
             filled: true,
             fillColor: const Color(0xFFF8FAFC),
@@ -547,8 +543,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
             letterSpacing: 1.1,
           ),
           decoration: InputDecoration(
-            hintText: '77048 49886',
-            hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13, letterSpacing: 0),
             prefixIcon: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10),
               child: const Row(
@@ -622,8 +616,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                     fontWeight: FontWeight.w700,
                   ),
                   decoration: InputDecoration(
-                    hintText: 'dhirendraofficer@dociscan.gov.in',
-                    hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 12),
                     prefixIcon: const Icon(Icons.alternate_email_rounded, color: Color(0xFF2D5A27), size: 18),
                     filled: true,
                     fillColor: const Color(0xFFF8FAFC),
@@ -693,8 +685,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                     fontFamily: 'Courier',
                   ),
                   decoration: InputDecoration(
-                    hintText: '85Pi!PTFx%yt',
-                    hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 12, letterSpacing: 0),
                     prefixIcon: const Icon(Icons.lock_outline_rounded, color: Color(0xFF2D5A27), size: 18),
                     suffixIcon: IconButton(
                       key: const Key('toggleRegisterPasswordVisibility'),

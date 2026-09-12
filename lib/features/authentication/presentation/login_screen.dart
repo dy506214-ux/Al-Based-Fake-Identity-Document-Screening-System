@@ -293,11 +293,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                   color: Color(0xFF1E293B),
                                 ),
                                 decoration: InputDecoration(
-                                  hintText: 'Enter your email',
-                                  hintStyle: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey.shade400,
-                                  ),
                                   contentPadding: const EdgeInsets.symmetric(
                                     horizontal: 14,
                                     vertical: 12,
@@ -344,11 +339,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                   color: Color(0xFF1E293B),
                                 ),
                                 decoration: InputDecoration(
-                                  hintText: 'Enter your password',
-                                  hintStyle: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey.shade400,
-                                  ),
                                   contentPadding: const EdgeInsets.symmetric(
                                     horizontal: 14,
                                     vertical: 12,

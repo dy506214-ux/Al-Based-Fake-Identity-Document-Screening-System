@@ -84,6 +84,51 @@ const normalizeMobile = (rawMobile) => {
   return null;
 };
 
+// Helper: Generate Unique Officer Login ID (e.g. 'dhirendraofficer')
+const generateLoginId = async (fullName, mobileDigits) => {
+  const cleanName = fullName.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const baseId = cleanName.length >= 3 ? `${cleanName}officer` : `officer${mobileDigits.slice(-4)}`;
+  
+  let candidate = baseId;
+  let suffix = 1;
+  
+  while (true) {
+    try {
+      const res = await db.query('SELECT id FROM users WHERE LOWER(email) = $1', [candidate]);
+      if (res.rows.length === 0 && !registeredOfficersStore.has(candidate)) {
+        return candidate;
+      }
+    } catch (_) {
+      if (!registeredOfficersStore.has(candidate)) {
+        return candidate;
+      }
+    }
+    suffix++;
+    candidate = `${baseId}${suffix}`;
+  }
+};
+
+// Helper: Generate Cryptographically Secure Temporary Password (10 chars: upper, lower, digits, symbols)
+const generateSecurePassword = () => {
+  const uppers = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const lowers = 'abcdefghijkmnopqrstuvwxyz';
+  const digits = '23456789';
+  const symbols = '!@#$%&*';
+
+  let pwd = '';
+  pwd += uppers[crypto.randomInt(0, uppers.length)];
+  pwd += lowers[crypto.randomInt(0, lowers.length)];
+  pwd += digits[crypto.randomInt(0, digits.length)];
+  pwd += symbols[crypto.randomInt(0, symbols.length)];
+
+  const allChars = uppers + lowers + digits + symbols;
+  for (let i = 0; i < 6; i++) {
+    pwd += allChars[crypto.randomInt(0, allChars.length)];
+  }
+
+  return pwd.split('').sort(() => crypto.randomInt(-1, 2)).join('');
+};
+
 // Helper: Real Fast2SMS Gateway Dispatcher (Production Indian Telecom SMS)
 const sendSmsOtp = async (mobile, otp) => {
   const apiKey = (process.env.FAST2SMS_API_KEY || process.env.SMS_API_KEY || process.env.FAST2SMS_KEY || '').trim();
@@ -216,6 +261,117 @@ app.get('/api/health', (req, res) => {
   });
 });
 app.get('/health', (req, res) => res.json({ success: true, status: 'healthy', uptime: process.uptime() }));
+
+// -------------------------------------------------------------
+// REGISTRATION: CREATE OFFICER CREDENTIALS (AUTOMATIC FLOW)
+// -------------------------------------------------------------
+app.post('/api/auth/registration/create-credentials', async (req, res) => {
+  const { name, mobile } = req.body;
+
+  if (!name || name.trim().length < 3) {
+    return res.status(400).json({
+      success: false,
+      message: 'Please enter a valid full name (minimum 3 characters).'
+    });
+  }
+
+  const normalized = normalizeMobile(mobile);
+  if (!normalized) {
+    return res.status(400).json({
+      success: false,
+      message: 'Please enter a valid 10-digit Indian mobile number.'
+    });
+  }
+
+  const raw10 = normalized.replace(/\D/g, '').slice(-10);
+
+  try {
+    // 1. Check duplicate mobile in database
+    try {
+      const existing = await db.query('SELECT id FROM users WHERE mobile = $1', [normalized]);
+      if (existing.rows.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'An officer account already exists for this mobile number. Please login.'
+        });
+      }
+    } catch (_) {
+      if (registeredOfficersStore.has(normalized)) {
+        return res.status(400).json({
+          success: false,
+          message: 'An officer account already exists for this mobile number. Please login.'
+        });
+      }
+    }
+
+    // 2. Generate unique login identifier (e.g. dhirendraofficer)
+    const loginId = await generateLoginId(name.trim(), raw10);
+
+    // 3. Generate cryptographically secure temporary password (e.g. Dh!7Kp@29Qx)
+    const plainPassword = generateSecurePassword();
+    const passwordHash = await bcrypt.hash(plainPassword, 10);
+
+    // 4. Insert into database
+    const officerId = crypto.randomUUID();
+    const officerName = name.trim();
+
+    let createdOfficer = {
+      id: officerId,
+      name: officerName,
+      email: loginId,
+      mobile: normalized,
+      role: 'OFFICER',
+      mobile_verified: true,
+      status: 'ACTIVE'
+    };
+
+    try {
+      const insertRes = await db.query(
+        `INSERT INTO users (id, name, email, mobile, mobile_verified, password_hash, role, status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         RETURNING id, name, email, mobile, role, mobile_verified, status`,
+        [officerId, officerName, loginId, normalized, true, passwordHash, 'OFFICER', 'ACTIVE']
+      );
+      if (insertRes.rows.length > 0) {
+        createdOfficer = insertRes.rows[0];
+      }
+    } catch (dbErr) {
+      console.warn('DB User insert warning (saving to HA store):', dbErr.message);
+    }
+
+    registeredOfficersStore.set(normalized, createdOfficer);
+    registeredOfficersStore.set(loginId, { ...createdOfficer, password_hash: passwordHash });
+
+    const maskedMobile = `******${raw10.slice(6)}`;
+    console.log(`[Officer Registration] Created credentials for mobile=${maskedMobile}, loginId=${loginId}`);
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: createdOfficer.id, role: createdOfficer.role, email: createdOfficer.email, mobile: normalized },
+      JWT_SECRET,
+      { expiresIn: '30d' }
+    );
+
+    return res.status(201).json({
+      success: true,
+      message: 'Officer account created successfully.',
+      token: token,
+      credentials: {
+        loginId: loginId,
+        password: plainPassword,
+        name: officerName,
+        mobile: normalized
+      },
+      user: createdOfficer
+    });
+  } catch (err) {
+    console.error('Create Credentials Error:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Unable to create officer account. Please try again.'
+    });
+  }
+});
 
 // -------------------------------------------------------------
 // REGISTRATION: SEND REAL OTP
@@ -451,10 +607,19 @@ app.post('/api/auth/login', async (req, res) => {
     });
   }
 
-  // 2. Database verification for other users
+  // 2. Database & In-Memory HA Store verification for other users
   try {
-    const result = await db.query('SELECT * FROM users WHERE LOWER(email) = $1 OR mobile = $1', [normalizedEmail]);
-    let user = result.rows[0];
+    let user = null;
+    try {
+      const result = await db.query('SELECT * FROM users WHERE LOWER(email) = $1 OR mobile = $1', [normalizedEmail]);
+      user = result.rows[0];
+    } catch (dbErr) {
+      console.warn('DB Query failed during login, checking HA store:', dbErr.message);
+    }
+
+    if (!user) {
+      user = registeredOfficersStore.get(normalizedEmail) || registeredOfficersStore.get(email.trim());
+    }
 
     if (!user) {
       return res.status(400).json({ success: false, message: 'Invalid email or password' });
@@ -465,10 +630,11 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid email or password' });
     }
 
-    const token = jwt.sign({ id: user.id, role: user.role, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
-    res.json({ success: true, token, user: { id: user.id, name: user.name, email: user.email, mobile: user.mobile, role: user.role } });
+    const token = jwt.sign({ id: user.id, role: user.role, email: user.email, mobile: user.mobile }, JWT_SECRET, { expiresIn: '30d' });
+    return res.json({ success: true, token, user: { id: user.id, name: user.name, email: user.email, mobile: user.mobile, role: user.role } });
   } catch (err) {
-    res.status(500).json({ success: false, message: 'Database error. Please try again.' });
+    console.error('Login Error:', err);
+    return res.status(500).json({ success: false, message: 'Login error. Please try again.' });
   }
 });
 

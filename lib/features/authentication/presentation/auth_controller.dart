@@ -72,6 +72,22 @@ class AuthController extends Notifier<AuthState> {
     }
   }
 
+  Future<GeneratedCredentials> createOfficerCredentials({
+    required String name,
+    required String mobile,
+  }) async {
+    try {
+      return await _authRepository.createOfficerCredentials(
+        name: name,
+        mobile: mobile,
+      );
+    } catch (e) {
+      final message = ApiException.extractUserMessage(e);
+      state = state.copyWith(status: AuthStateStatus.error, errorMessage: message);
+      rethrow;
+    }
+  }
+
   Future<int> sendRegistrationOtp({required String name, required String mobile}) async {
     try {
       return await _authRepository.sendRegistrationOtp(name: name, mobile: mobile);

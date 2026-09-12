@@ -6,6 +6,8 @@ import '../../features/authentication/presentation/auth_controller.dart';
 import '../../features/authentication/presentation/splash_screen.dart';
 import '../../features/authentication/presentation/login_screen.dart';
 import '../../features/authentication/presentation/register_screen.dart';
+import '../../features/authentication/presentation/credentials_display_screen.dart';
+import '../../features/authentication/domain/auth_repository.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/documents/presentation/documents_screen.dart';
@@ -44,9 +46,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final isSplash = state.uri.toString() == '/splash';
       final isLoggingIn = state.uri.toString() == '/login';
       final isRegistering = state.uri.toString() == '/register';
+      final isCredentials = state.uri.toString() == '/credentials';
 
-      if (!isAuth && !isLoggingIn && !isSplash && !isRegistering) return '/login';
-      if (isAuth && (isLoggingIn || isSplash || isRegistering)) return '/dashboard';
+      if (!isAuth && !isLoggingIn && !isSplash && !isRegistering && !isCredentials) return '/login';
+      if (isAuth && (isLoggingIn || isSplash || isRegistering || isCredentials)) return '/dashboard';
 
       return null;
     },
@@ -67,6 +70,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/register',
         builder: (BuildContext context, GoRouterState state) {
           return const RegisterScreen();
+        },
+      ),
+      GoRoute(
+        path: '/credentials',
+        builder: (BuildContext context, GoRouterState state) {
+          final credentials = state.extra as GeneratedCredentials? ??
+              const GeneratedCredentials(
+                loginId: 'officer_user',
+                password: '••••••••',
+                name: 'Officer',
+                mobile: '',
+              );
+          return CredentialsDisplayScreen(credentials: credentials);
         },
       ),
       GoRoute(

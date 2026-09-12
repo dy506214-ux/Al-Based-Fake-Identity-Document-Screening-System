@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -18,18 +17,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
   final _nameController = TextEditingController();
   final _mobileController = TextEditingController();
 
-  final List<TextEditingController> _otpControllers =
-      List.generate(6, (_) => TextEditingController());
-  final List<FocusNode> _otpFocusNodes =
-      List.generate(6, (_) => FocusNode());
-
-  bool _isOtpSent = false;
   bool _isLoading = false;
   String? _errorMessage;
-  String? _successMessage;
-
-  int _resendCooldown = 60;
-  Timer? _countdownTimer;
   late final AnimationController _rotationController;
 
   @override
@@ -46,37 +35,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
     _rotationController.dispose();
     _nameController.dispose();
     _mobileController.dispose();
-    for (final c in _otpControllers) {
-      c.dispose();
-    }
-    for (final f in _otpFocusNodes) {
-      f.dispose();
-    }
-    _countdownTimer?.cancel();
     super.dispose();
   }
 
-  void _startCooldown([int seconds = 60]) {
-    _countdownTimer?.cancel();
-    setState(() {
-      _resendCooldown = seconds;
-    });
-    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_resendCooldown > 0) {
-        setState(() {
-          _resendCooldown--;
-        });
-      } else {
-        timer.cancel();
-      }
-    });
-  }
-
-  String _getCombinedOtp() {
-    return _otpControllers.map((c) => c.text.trim()).join();
-  }
-
-  Future<void> _handleSendOtp() async {
+  Future<void> _handleCreateCredentials() async {
     final name = _nameController.text.trim();
     final rawMobile = _mobileController.text.trim().replaceAll(RegExp(r'\D'), '');
 
@@ -97,61 +59,25 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
     setState(() {
       _isLoading = true;
       _errorMessage = null;
-      _successMessage = null;
     });
 
     try {
-      final cooldown = await ref.read(authControllerProvider.notifier).sendRegistrationOtp(
+      final credentials = await ref
+          .read(authControllerProvider.notifier)
+          .createOfficerCredentials(
             name: name,
-            mobile: '+91$rawMobile',
+            mobile: rawMobile,
           );
 
-      setState(() {
-        _isOtpSent = true;
-        _isLoading = false;
-        _successMessage = 'Verification code dispatched to +91 $rawMobile';
-      });
-      _startCooldown(cooldown > 0 ? cooldown : 60);
-
-      // Auto-focus first OTP digit
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_otpFocusNodes.isNotEmpty) {
-          _otpFocusNodes[0].requestFocus();
-        }
-      });
-    } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _errorMessage = e.toString().replaceAll('Exception: ', '');
       });
-    }
-  }
 
-  Future<void> _handleVerifyOtpAndRegister() async {
-    final name = _nameController.text.trim();
-    final rawMobile = _mobileController.text.trim().replaceAll(RegExp(r'\D'), '');
-    final otp = _getCombinedOtp();
-
-    if (otp.length != 6) {
-      setState(() {
-        _errorMessage = 'Please enter all 6 digits of the OTP.';
-      });
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      await ref.read(authControllerProvider.notifier).verifyOtpAndRegister(
-            name: name,
-            mobile: '+91$rawMobile',
-            otp: otp,
-          );
-      // Successful registration will trigger router redirection automatically
+      // Navigate to the secure credential display screen
+      context.go('/credentials', extra: credentials);
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
         _errorMessage = e.toString().replaceAll('Exception: ', '');
@@ -242,9 +168,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                       const SizedBox(height: 14),
 
                       // Title
-                      Text(
-                        _isOtpSent ? 'VERIFY MOBILE NUMBER' : 'OFFICER REGISTRATION',
-                        style: const TextStyle(
+                      const Text(
+                        'OFFICER REGISTRATION',
+                        style: TextStyle(
                           color: Color(0xFF1E293B),
                           fontSize: 20,
                           fontWeight: FontWeight.w900,
@@ -253,9 +179,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        _isOtpSent
-                            ? 'Enter the 6-digit verification code sent to your mobile phone'
-                            : 'Create your authorized credentials with mobile verification',
+                        'Enter your official details to generate your secure Login ID and Password.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: Colors.grey.shade600,
@@ -295,179 +219,58 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                         const SizedBox(height: 16),
                       ],
 
-                      // Success Alert Box
-                      if (_successMessage != null && _errorMessage == null) ...[
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFECFDF5),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.4)),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.check_circle_outline_rounded, color: Color(0xFF059669), size: 18),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  _successMessage!,
-                                  style: const TextStyle(
-                                    color: Color(0xFF065F46),
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                      ],
+                      // Full Name Input
+                      _buildInputField(
+                        controller: _nameController,
+                        label: 'Full Name',
+                        hintText: 'e.g., Dhirendra Kumar',
+                        icon: Icons.person_outline_rounded,
+                        textCapitalization: TextCapitalization.words,
+                        enabled: !_isLoading,
+                      ),
+                      const SizedBox(height: 16),
 
-                      // Form Fields
-                      if (!_isOtpSent) ...[
-                        // Full Name Input
-                        _buildInputField(
-                          controller: _nameController,
-                          label: 'Full Name',
-                          hintText: 'e.g., Officer Rajesh Sharma',
-                          icon: Icons.person_outline_rounded,
-                          textCapitalization: TextCapitalization.words,
-                          enabled: !_isLoading,
-                        ),
-                        const SizedBox(height: 16),
+                      // Mobile Number Input
+                      _buildMobileInputField(
+                        controller: _mobileController,
+                        enabled: !_isLoading,
+                      ),
+                      const SizedBox(height: 24),
 
-                        // Mobile Number Input
-                        _buildMobileInputField(
-                          controller: _mobileController,
-                          enabled: !_isLoading,
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Send OTP CTA Button
-                        SizedBox(
-                          width: double.infinity,
-                          height: 50,
-                          child: ElevatedButton(
-                            onPressed: _isLoading ? null : _handleSendOtp,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF2D5A27), // Tactical deep green
-                              foregroundColor: Colors.white,
-                              elevation: 2,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
+                      // CREATE ID & PASSWORD CTA Button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: ElevatedButton(
+                          key: const Key('createCredentialsButton'),
+                          onPressed: _isLoading ? null : _handleCreateCredentials,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF2D5A27), // Tactical deep green
+                            foregroundColor: Colors.white,
+                            elevation: 2,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
                             ),
-                            child: _isLoading
-                                ? const SizedBox(
-                                    width: 22,
-                                    height: 22,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2.5,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                : const Text(
-                                    'SEND VERIFICATION CODE',
-                                    style: TextStyle(
-                                      fontSize: 13.5,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: 1.0,
-                                    ),
-                                  ),
                           ),
-                        ),
-                      ] else ...[
-                        // Step 2: OTP Verification Boxes
-                        _buildOtpBoxes(),
-                        const SizedBox(height: 20),
-
-                        // Resend OTP & Cooldown
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            TextButton.icon(
-                              onPressed: _isLoading
-                                  ? null
-                                  : () {
-                                      setState(() {
-                                        _isOtpSent = false;
-                                        _errorMessage = null;
-                                        _successMessage = null;
-                                        for (final c in _otpControllers) {
-                                          c.clear();
-                                        }
-                                      });
-                                    },
-                              icon: const Icon(Icons.edit_outlined, size: 14),
-                              label: const Text(
-                                'Change Number',
-                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                              ),
-                              style: TextButton.styleFrom(
-                                foregroundColor: const Color(0xFF2D5A27),
-                              ),
-                            ),
-                            if (_resendCooldown > 0)
-                              Text(
-                                'Resend in ${_resendCooldown}s',
-                                style: TextStyle(
-                                  color: Colors.grey.shade600,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              )
-                            else
-                              TextButton(
-                                onPressed: _isLoading ? null : _handleSendOtp,
-                                child: const Text(
-                                  'RESEND OTP',
+                          child: _isLoading
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text(
+                                  'CREATE ID & PASSWORD',
                                   style: TextStyle(
-                                    color: Color(0xFFF59E0B),
-                                    fontSize: 12.5,
+                                    fontSize: 13.5,
                                     fontWeight: FontWeight.w800,
+                                    letterSpacing: 1.0,
                                   ),
                                 ),
-                              ),
-                          ],
                         ),
-                        const SizedBox(height: 20),
-
-                        // Verify & Register Button
-                        SizedBox(
-                          width: double.infinity,
-                          height: 50,
-                          child: ElevatedButton(
-                            onPressed: _isLoading ? null : _handleVerifyOtpAndRegister,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF2D5A27),
-                              foregroundColor: Colors.white,
-                              elevation: 2,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                            ),
-                            child: _isLoading
-                                ? const SizedBox(
-                                    width: 22,
-                                    height: 22,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2.5,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                : const Text(
-                                    'VERIFY OTP & REGISTER',
-                                    style: TextStyle(
-                                      fontSize: 13.5,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: 1.0,
-                                    ),
-                                  ),
-                          ),
-                        ),
-                      ],
+                      ),
 
                       const SizedBox(height: 22),
 
@@ -484,6 +287,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                             ),
                           ),
                           InkWell(
+                            key: const Key('loginHereLink'),
                             onTap: () {
                               context.go('/login');
                             },
@@ -530,6 +334,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
         ),
         const SizedBox(height: 6),
         TextField(
+          key: const Key('registerFullNameField'),
           controller: controller,
           enabled: enabled,
           textCapitalization: textCapitalization,
@@ -576,6 +381,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
         ),
         const SizedBox(height: 6),
         TextField(
+          key: const Key('registerMobileField'),
           controller: controller,
           enabled: enabled,
           keyboardType: TextInputType.phone,
@@ -626,56 +432,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildOtpBoxes() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: List.generate(6, (index) {
-        return SizedBox(
-          width: 44,
-          height: 52,
-          child: TextField(
-            controller: _otpControllers[index],
-            focusNode: _otpFocusNodes[index],
-            textAlign: TextAlign.center,
-            keyboardType: TextInputType.number,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w900,
-              color: Color(0xFF0F172A),
-            ),
-            inputFormatters: [
-              FilteringTextInputFormatter.digitsOnly,
-              LengthLimitingTextInputFormatter(1),
-            ],
-            onChanged: (value) {
-              if (value.isNotEmpty && index < 5) {
-                _otpFocusNodes[index + 1].requestFocus();
-              } else if (value.isEmpty && index > 0) {
-                _otpFocusNodes[index - 1].requestFocus();
-              }
-              if (_getCombinedOtp().length == 6) {
-                _handleVerifyOtpAndRegister();
-              }
-            },
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: const Color(0xFFF8FAFC),
-              contentPadding: EdgeInsets.zero,
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide(color: Colors.grey.shade300),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: Color(0xFF2D5A27), width: 2),
-              ),
-            ),
-          ),
-        );
-      }),
     );
   }
 }

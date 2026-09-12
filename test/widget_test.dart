@@ -27,8 +27,10 @@ import 'package:document_screening/features/history/data/history_repository.dart
 import 'package:document_screening/features/history/presentation/history_screen.dart';
 import 'package:document_screening/features/profile/presentation/profile_screen.dart';
 import 'package:document_screening/features/authentication/domain/user_model.dart';
+import 'package:document_screening/features/authentication/domain/auth_repository.dart';
 import 'package:document_screening/features/authentication/presentation/auth_controller.dart';
 import 'package:document_screening/features/authentication/presentation/register_screen.dart';
+import 'package:document_screening/features/authentication/presentation/credentials_display_screen.dart';
 import 'package:document_screening/features/documents/data/document_detection_service.dart';
 
 void main() {
@@ -1100,7 +1102,7 @@ void main() {
         expect(find.text('Full Name'), findsOneWidget);
         expect(find.text('Mobile Number (India)'), findsOneWidget);
         expect(find.text('+91'), findsOneWidget);
-        expect(find.text('SEND VERIFICATION CODE'), findsOneWidget);
+        expect(find.text('CREATE ID & PASSWORD'), findsOneWidget);
         expect(find.text('Login here'), findsOneWidget);
         expect(tester.takeException(), isNull);
       });
@@ -1221,6 +1223,97 @@ void main() {
 
       // Capture button exists
       expect(find.byTooltip('Capture Photo'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+  });
+
+  group('Officer Credential Generation & Display Flow Tests', () {
+    test('GeneratedCredentials JSON serialization and model fields work correctly', () {
+      final json = {
+        'loginId': 'dhirendraofficer',
+        'password': 'Dh!7Kp@29Qx',
+        'name': 'Dhirendra Kumar',
+        'mobile': '9876543210',
+      };
+
+      final creds = GeneratedCredentials.fromJson(json);
+      expect(creds.loginId, 'dhirendraofficer');
+      expect(creds.password, 'Dh!7Kp@29Qx');
+      expect(creds.name, 'Dhirendra Kumar');
+      expect(creds.mobile, '9876543210');
+      expect(ApiEndpoints.createCredentials, '/api/auth/registration/create-credentials');
+    });
+
+    testWidgets('RegisterScreen renders CREATE ID & PASSWORD button and name/mobile inputs without OTP fields', (tester) async {
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: MaterialApp(
+            home: RegisterScreen(),
+          ),
+        ),
+      );
+
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.text('OFFICER REGISTRATION'), findsOneWidget);
+      expect(find.text('Full Name'), findsOneWidget);
+      expect(find.text('Mobile Number (India)'), findsOneWidget);
+      expect(find.text('+91'), findsOneWidget);
+      expect(find.text('CREATE ID & PASSWORD'), findsOneWidget);
+      expect(find.text('Login here'), findsOneWidget);
+
+      // Verify OTP elements are NOT present on initial registration
+      expect(find.text('SEND VERIFICATION CODE'), findsNothing);
+      expect(find.text('VERIFY OTP & REGISTER'), findsNothing);
+      expect(find.text('VERIFY MOBILE NUMBER'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('CredentialsDisplayScreen renders all security elements, credentials, copy buttons, and done CTA', (tester) async {
+      const testCredentials = GeneratedCredentials(
+        loginId: 'dhirendraofficer',
+        password: 'Dh!7Kp@29Qx',
+        name: 'Dhirendra Kumar',
+        mobile: '9876543210',
+      );
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: CredentialsDisplayScreen(credentials: testCredentials),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.text('ACCOUNT CREATED'), findsOneWidget);
+      expect(find.text('Dhirendra Kumar'), findsOneWidget);
+      expect(find.text('+91 9876543210'), findsOneWidget);
+      expect(find.text('LOGIN ID'), findsOneWidget);
+      expect(find.text('dhirendraofficer'), findsOneWidget);
+      expect(find.text('PASSWORD'), findsOneWidget);
+
+      // Screenshot alert banner
+      expect(
+        find.textContaining('Take a screenshot of this page and keep it safely for future login'),
+        findsOneWidget,
+      );
+
+      // Copy buttons
+      expect(find.byKey(const Key('copyLoginIdButton')), findsOneWidget);
+      expect(find.byKey(const Key('copyPasswordButton')), findsOneWidget);
+      expect(find.byKey(const Key('copyAllCredentialsButton')), findsOneWidget);
+      expect(find.text('COPY ALL CREDENTIALS'), findsOneWidget);
+
+      // Toggle password visibility
+      final toggleButton = find.byKey(const Key('togglePasswordVisibilityButton'));
+      expect(toggleButton, findsOneWidget);
+      await tester.tap(toggleButton);
+      await tester.pumpAndSettle();
+      expect(find.text('Dh!7Kp@29Qx'), findsOneWidget);
+
+      // Done CTA button
+      expect(find.byKey(const Key('credentialsDoneButton')), findsOneWidget);
+      expect(find.text('DONE'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   });

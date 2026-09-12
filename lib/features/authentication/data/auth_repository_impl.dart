@@ -126,6 +126,43 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<GeneratedCredentials> createOfficerCredentials({
+    required String name,
+    required String mobile,
+  }) async {
+    final cleanName = name.trim();
+    final cleanMobile = mobile.trim();
+
+    try {
+      final response = await _apiClient.post(
+        ApiEndpoints.createCredentials,
+        data: {
+          'name': cleanName,
+          'mobile': cleanMobile,
+        },
+      );
+
+      if (response.data != null && response.data['success'] == true) {
+        return GeneratedCredentials.fromJson(
+          Map<String, dynamic>.from(response.data['credentials'] ?? {}),
+        );
+      } else {
+        throw ValidationException(
+          response.data?['message'] ?? 'Failed to create officer credentials.',
+          statusCode: 400,
+        );
+      }
+    } on ApiException {
+      rethrow;
+    } on DioException catch (e) {
+      throw ApiException.fromDioException(e);
+    } catch (e) {
+      final msg = ApiException.extractUserMessage(e);
+      throw UnknownApiException(msg);
+    }
+  }
+
+  @override
   Future<int> sendRegistrationOtp({required String name, required String mobile}) async {
     final cleanName = name.trim();
     final cleanMobile = mobile.trim();

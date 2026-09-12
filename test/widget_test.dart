@@ -29,6 +29,7 @@ import 'package:document_screening/features/profile/presentation/profile_screen.
 import 'package:document_screening/features/authentication/domain/user_model.dart';
 import 'package:document_screening/features/authentication/presentation/auth_controller.dart';
 import 'package:document_screening/features/authentication/presentation/register_screen.dart';
+import 'package:document_screening/features/documents/data/document_detection_service.dart';
 
 void main() {
   group('ApiEndpoints Production Tests', () {
@@ -1104,6 +1105,124 @@ void main() {
         expect(tester.takeException(), isNull);
       });
     }
+  });
+
+  group('Intelligent Document Detection & Camera Validation Tests', () {
+    const detectionService = DocumentDetectionService();
+
+    test('Canonical document type normalization', () {
+      expect(detectionService.normalizeDocType('Passport'), 'passport');
+      expect(detectionService.normalizeDocType('Aadhaar Card'), 'aadhaar');
+      expect(detectionService.normalizeDocType('PAN Card'), 'pan');
+      expect(detectionService.normalizeDocType('Driving Licence'), 'driving_licence');
+      expect(detectionService.normalizeDocType('Driving License'), 'driving_licence');
+      expect(detectionService.normalizeDocType('Visa'), 'visa');
+      expect(detectionService.normalizeDocType('Other National ID'), 'national_id');
+      expect(detectionService.normalizeDocType('Voter ID'), 'national_id');
+      expect(detectionService.normalizeDocType('Unknown Random Doc'), 'other');
+    });
+
+    test('Empty or invalid frame results in searching state with capture disabled', () async {
+      final result = await detectionService.analyzeFrameBytes(
+        bytes: Uint8List(0),
+        selectedDocType: 'Passport',
+      );
+
+      expect(result.state, DocumentScannerState.searching);
+      expect(result.isCaptureEnabled, false);
+      expect(result.statusMessage, contains('LOOKING FOR DOCUMENT'));
+    });
+
+    test('Searching factory produces non-capturable state', () {
+      final res = DocumentDetectionResult.searching();
+      expect(res.state, DocumentScannerState.searching);
+      expect(res.isCaptureEnabled, false);
+      expect(res.statusColor, const Color(0xFFF59E0B));
+      expect(res.statusMessage, '● LOOKING FOR DOCUMENT');
+    });
+
+    test('Invalid factory produces rejected state with guidance', () {
+      final res = DocumentDetectionResult.invalid(
+        reason: 'Human face detected',
+        secondaryGuidance: 'Document Required · Please place identity document in frame',
+      );
+      expect(res.state, DocumentScannerState.invalidDocument);
+      expect(res.isCaptureEnabled, false);
+      expect(res.statusColor, const Color(0xFFEF4444));
+      expect(res.statusMessage, '● DOCUMENT NOT DETECTED');
+      expect(res.guidanceMessage, contains('Document Required'));
+    });
+
+    test('Wrong document type factory produces clear mismatch guidance', () {
+      final res = DocumentDetectionResult.wrongType(
+        selectedType: 'Passport',
+        detectedType: 'pan_card',
+      );
+      expect(res.state, DocumentScannerState.wrongDocumentType);
+      expect(res.isCaptureEnabled, false);
+      expect(res.statusMessage, '● WRONG DOCUMENT TYPE');
+      expect(res.guidanceMessage, contains('Selected: Passport'));
+      expect(res.guidanceMessage, contains('does not match'));
+    });
+
+    test('Consecutive frames stability transition: < 3 frames aligned vs >= 3 readyToCapture', () {
+      // 1 frame -> documentAligned (capturing NOT yet enabled)
+      final frame1 = DocumentDetectionResult.aligned(
+        consecutiveFrames: 1,
+        docType: 'passport',
+        confidence: 0.80,
+        aspectRatio: 1.42,
+        coverage: 0.65,
+        sharpness: 35.0,
+        glare: 0.01,
+        luminance: 120.0,
+      );
+      expect(frame1.state, DocumentScannerState.documentAligned);
+      expect(frame1.isCaptureEnabled, false);
+      expect(frame1.statusMessage, '● DOCUMENT DETECTED');
+
+      // 3 consecutive frames -> readyToCapture (capture ENABLED)
+      final frame3 = DocumentDetectionResult.aligned(
+        consecutiveFrames: 3,
+        docType: 'passport',
+        confidence: 0.95,
+        aspectRatio: 1.42,
+        coverage: 0.65,
+        sharpness: 35.0,
+        glare: 0.01,
+        luminance: 120.0,
+      );
+      expect(frame3.state, DocumentScannerState.readyToCapture);
+      expect(frame3.isCaptureEnabled, true);
+      expect(frame3.statusMessage, '● READY TO CAPTURE');
+      expect(frame3.statusColor, const Color(0xFF22C55E));
+    });
+
+    testWidgets('DocumentCaptureScreen renders dynamic instructions and status with capture gating', (tester) async {
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: MaterialApp(
+            home: DocumentCaptureScreen(selectedDocType: 'Passport'),
+          ),
+        ),
+      );
+
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.text('CAPTURE DOCUMENT'), findsOneWidget);
+      expect(find.textContaining('PASSPORT'), findsWidgets);
+      expect(find.text('PROTECTED DOCUMENT CAPTURE · SECURE STORAGE'), findsOneWidget);
+      expect(find.byType(CustomPaint), findsWidgets);
+
+      // Verify guidance chips
+      expect(find.text('· Good lighting'), findsOneWidget);
+      expect(find.text('· All corners visible'), findsOneWidget);
+      expect(find.text('· No glare'), findsOneWidget);
+
+      // Capture button exists
+      expect(find.byTooltip('Capture Photo'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
   });
 }
 

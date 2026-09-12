@@ -1092,7 +1092,7 @@ void main() {
           ),
         );
 
-        await tester.pumpAndSettle();
+        await tester.pump(const Duration(milliseconds: 100));
 
         expect(find.text('OFFICER ONBOARDING'), findsOneWidget);
         expect(find.text('OFFICER REGISTRATION'), findsOneWidget);

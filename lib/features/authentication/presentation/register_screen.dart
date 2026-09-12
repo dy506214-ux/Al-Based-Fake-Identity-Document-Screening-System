@@ -163,7 +163,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
     final isCompact = screenSize.width < 380;
-    final cardWidth = math.min(screenSize.width - 32.0, 430.0);
+    final cardWidth = math.min(screenSize.width - 20.0, 430.0);
 
     return Scaffold(
       backgroundColor: const Color(0xFF0D1B0F), // Dark tactical green background
@@ -196,7 +196,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
                 child: Container(
                   width: cardWidth,
                   decoration: BoxDecoration(
@@ -210,7 +210,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                       ),
                     ],
                   ),
-                  padding: EdgeInsets.all(isCompact ? 20 : 28),
+                  padding: EdgeInsets.all(isCompact ? 16 : 28),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -472,8 +472,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                       const SizedBox(height: 22),
 
                       // Footer link back to Login
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           Text(
                             'Already registered? ',

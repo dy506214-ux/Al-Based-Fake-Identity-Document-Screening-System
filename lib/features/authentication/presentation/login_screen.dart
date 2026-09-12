@@ -549,12 +549,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                 fontSize: 13,
                               ),
                             ),
-                            const Text(
-                              'Register here',
-                              style: TextStyle(
-                                color: Color(0xFFF59E0B),
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
+                            InkWell(
+                              onTap: () {
+                                context.push('/register');
+                              },
+                              child: const Text(
+                                'Register here',
+                                style: TextStyle(
+                                  color: Color(0xFFF59E0B),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                             ),
                           ],

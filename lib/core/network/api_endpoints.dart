@@ -8,9 +8,11 @@ class ApiEndpoints {
   // Health check
   static const String health = '/api/health';
 
-  // Authentication
+  // Authentication & Registration
   static const String login = '/api/auth/login';
   static const String profile = '/api/auth/profile';
+  static const String sendRegistrationOtp = '/api/auth/registration/send-otp';
+  static const String verifyRegistrationOtp = '/api/auth/registration/verify-otp';
 
   // Document Management & Screening
   static const String uploadDocument = '/api/documents/upload';
@@ -28,6 +30,7 @@ class ApiEndpoints {
 
   // Admin & Analytics Dashboard
   static const String adminStats = '/api/admin/stats';
+  static const String adminOfficers = '/api/admin/officers';
   static const String adminDocuments = '/api/admin/documents';
   static const String adminUsers = '/api/admin/users';
   static const String adminAuditLogs = '/api/admin/audit-logs';

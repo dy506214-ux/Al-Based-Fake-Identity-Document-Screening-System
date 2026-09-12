@@ -2,21 +2,49 @@ const db = require('./db');
 
 const initDatabase = async () => {
   try {
-    console.log('Connecting to database to initialize tables...');
+    console.log('Connecting to database to initialize and migrate tables...');
 
-    // Create Users table
+    // 1. Create/Migrate Users table
     await db.query(`
       CREATE TABLE IF NOT EXISTS users (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         name VARCHAR(255) NOT NULL,
-        email VARCHAR(255) UNIQUE NOT NULL,
-        password_hash VARCHAR(255) NOT NULL,
+        email VARCHAR(255) UNIQUE,
+        mobile VARCHAR(20) UNIQUE,
+        mobile_verified BOOLEAN DEFAULT FALSE,
+        password_hash VARCHAR(255),
         role VARCHAR(50) DEFAULT 'OFFICER',
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        status VARCHAR(50) DEFAULT 'ACTIVE',
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
-    // Create Documents table
+    // Ensure columns exist on already-existing tables
+    await db.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS mobile VARCHAR(20) UNIQUE;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS mobile_verified BOOLEAN DEFAULT FALSE;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'ACTIVE';
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+      ALTER TABLE users ALTER COLUMN email DROP NOT NULL;
+      ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;
+    `);
+
+    // 2. Create OTP Verifications table
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS otp_verifications (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        mobile VARCHAR(20) NOT NULL,
+        otp_hash VARCHAR(255) NOT NULL,
+        attempts INT DEFAULT 0,
+        verified BOOLEAN DEFAULT FALSE,
+        expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_otp_mobile ON otp_verifications(mobile);
+    `);
+
+    // 3. Create Documents table
     await db.query(`
       CREATE TABLE IF NOT EXISTS documents (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -33,18 +61,18 @@ const initDatabase = async () => {
       );
     `);
 
-    // Seed/Upsert default Officer
+    // 4. Seed/Upsert default Officer
     const bcrypt = require('bcryptjs');
     const officerEmail = 'officer@gmail.com';
     const officerPassword = 'officer123';
     const hash = await bcrypt.hash(officerPassword, 10);
 
     await db.query(`
-      INSERT INTO users (name, email, password_hash, role)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO users (name, email, mobile, mobile_verified, password_hash, role, status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       ON CONFLICT (email) 
-      DO UPDATE SET password_hash = EXCLUDED.password_hash, role = 'OFFICER';
-    `, ['Chief Officer', officerEmail, hash, 'OFFICER']);
+      DO UPDATE SET password_hash = EXCLUDED.password_hash, role = 'OFFICER', mobile_verified = true;
+    `, ['Chief Officer', officerEmail, '+919876543210', true, hash, 'OFFICER', 'ACTIVE']);
 
     console.log(`Officer account seeded: ${officerEmail} / ${officerPassword}`);
     console.log('Database tables and seed created successfully!');

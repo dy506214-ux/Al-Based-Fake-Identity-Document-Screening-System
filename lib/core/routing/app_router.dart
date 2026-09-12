@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/authentication/presentation/auth_controller.dart';
 import '../../features/authentication/presentation/splash_screen.dart';
 import '../../features/authentication/presentation/login_screen.dart';
+import '../../features/authentication/presentation/register_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/documents/presentation/documents_screen.dart';
@@ -42,9 +43,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final isAuth = authState.status == AuthStateStatus.authenticated;
       final isSplash = state.uri.toString() == '/splash';
       final isLoggingIn = state.uri.toString() == '/login';
+      final isRegistering = state.uri.toString() == '/register';
 
-      if (!isAuth && !isLoggingIn && !isSplash) return '/login';
-      if (isAuth && (isLoggingIn || isSplash)) return '/dashboard';
+      if (!isAuth && !isLoggingIn && !isSplash && !isRegistering) return '/login';
+      if (isAuth && (isLoggingIn || isSplash || isRegistering)) return '/dashboard';
 
       return null;
     },
@@ -59,6 +61,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/login',
         builder: (BuildContext context, GoRouterState state) {
           return const LoginScreen();
+        },
+      ),
+      GoRoute(
+        path: '/register',
+        builder: (BuildContext context, GoRouterState state) {
+          return const RegisterScreen();
         },
       ),
       GoRoute(

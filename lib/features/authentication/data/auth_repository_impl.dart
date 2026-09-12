@@ -126,6 +126,100 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<int> sendRegistrationOtp({required String name, required String mobile}) async {
+    final cleanName = name.trim();
+    final cleanMobile = mobile.trim();
+
+    try {
+      final response = await _apiClient.post(
+        ApiEndpoints.sendRegistrationOtp,
+        data: {
+          'name': cleanName,
+          'mobile': cleanMobile,
+        },
+      );
+
+      if (response.data != null && response.data['success'] == true) {
+        return (response.data['cooldownSeconds'] as int?) ?? 60;
+      } else {
+        throw ValidationException(
+          response.data?['message'] ?? 'Unable to send verification code.',
+          statusCode: 400,
+        );
+      }
+    } on ApiException {
+      rethrow;
+    } on DioException catch (e) {
+      throw ApiException.fromDioException(e);
+    } catch (e) {
+      final msg = ApiException.extractUserMessage(e);
+      throw UnknownApiException(msg);
+    }
+  }
+
+  @override
+  Future<UserModel> verifyOtpAndRegister({
+    required String name,
+    required String mobile,
+    required String otp,
+  }) async {
+    final cleanName = name.trim();
+    final cleanMobile = mobile.trim();
+    final cleanOtp = otp.trim();
+
+    try {
+      final response = await _apiClient.post(
+        ApiEndpoints.verifyRegistrationOtp,
+        data: {
+          'name': cleanName,
+          'mobile': cleanMobile,
+          'otp': cleanOtp,
+        },
+      );
+
+      if (response.data != null && response.data['success'] == true) {
+        final token = response.data['token']?.toString();
+        if (token != null && token.isNotEmpty) {
+          await _secureStorage.saveTokens(
+            accessToken: token,
+            refreshToken: token,
+          );
+
+          final userJson = response.data['user'] as Map<String, dynamic>?;
+          final user = userJson != null
+              ? UserModel.fromJson(userJson)
+              : UserModel(
+                  id: '00000000-0000-0000-0000-000000000001',
+                  name: cleanName,
+                  email: 'officer_$cleanMobile@agency.gov.in',
+                  mobile: cleanMobile,
+                  mobileVerified: true,
+                  role: 'OFFICER',
+                );
+
+          await _secureStorage.saveUser(jsonEncode(user.toJson()));
+          await _secureStorage.saveRememberMe(rememberMe: true, email: user.email);
+
+          return user;
+        }
+        throw const ParseException('Authentication token missing in registration response.');
+      } else {
+        throw ValidationException(
+          response.data?['message'] ?? 'Registration verification failed.',
+          statusCode: 400,
+        );
+      }
+    } on ApiException {
+      rethrow;
+    } on DioException catch (e) {
+      throw ApiException.fromDioException(e);
+    } catch (e) {
+      final msg = ApiException.extractUserMessage(e);
+      throw UnknownApiException(msg);
+    }
+  }
+
+  @override
   Future<void> logout() async {
     await _secureStorage.clearTokens();
   }
@@ -135,7 +229,6 @@ class AuthRepositoryImpl implements AuthRepository {
     final token = await _secureStorage.getAccessToken();
     if (token == null || token.isEmpty) return null;
 
-    // Purge known expired mock tokens or invalid debug tokens from storage
     if (token.length < 20 ||
         token == 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhOGVmMjY4ZjI4YTJkNzFhYWU3NDU0MyIsInJvbGUiOiJPRkZJQ0VSIiwiaWF0IjoxNzg4NjA2Nzg5LCJleHAiOjE3ODg2OTMxODl9.3e-eZaPpnTVdrrYSwCNtXa71w611HbSdbc96HUQEQOA' ||
         token.startsWith('live_token_')) {
@@ -143,7 +236,6 @@ class AuthRepositoryImpl implements AuthRepository {
       return null;
     }
 
-    // 1. Try restoring cached UserModel
     final rawUser = await _secureStorage.getUser();
     if (rawUser != null && rawUser.isNotEmpty) {
       try {
@@ -152,7 +244,6 @@ class AuthRepositoryImpl implements AuthRepository {
       } catch (_) {}
     }
 
-    // 2. Fetch profile from real backend to restore fresh user details
     try {
       final response = await _apiClient.get(ApiEndpoints.profile);
       if (response.data != null && response.data['success'] == true) {
@@ -163,9 +254,7 @@ class AuthRepositoryImpl implements AuthRepository {
           return user;
         }
       }
-    } catch (_) {
-      // If server temporarily unreachable, preserve authenticated session with fallback user
-    }
+    } catch (_) {}
 
     return const UserModel(id: '', name: 'Officer', email: '', role: 'OFFICER');
   }

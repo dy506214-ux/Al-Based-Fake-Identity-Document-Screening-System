@@ -4,6 +4,8 @@ class UserModel {
   final String id;
   final String name;
   final String email;
+  final String? mobile;
+  final bool mobileVerified;
   final String role;
   final String? department;
   final bool isActive;
@@ -12,6 +14,8 @@ class UserModel {
     required this.id,
     required this.name,
     required this.email,
+    this.mobile,
+    this.mobileVerified = false,
     required this.role,
     this.department,
     this.isActive = true,
@@ -35,9 +39,11 @@ class UserModel {
       id: (json['id'] ?? json['_id'] ?? '').toString(),
       name: (json['name'] ?? 'Officer').toString(),
       email: (json['email'] ?? '').toString(),
+      mobile: json['mobile']?.toString(),
+      mobileVerified: json['mobile_verified'] as bool? ?? json['mobileVerified'] as bool? ?? false,
       role: (json['role'] ?? 'OFFICER').toString(),
       department: json['department']?.toString(),
-      isActive: json['isActive'] as bool? ?? true,
+      isActive: json['isActive'] as bool? ?? (json['status'] == 'ACTIVE' || json['status'] == null),
     );
   }
 
@@ -46,6 +52,8 @@ class UserModel {
       'id': id,
       'name': name,
       'email': email,
+      'mobile': mobile,
+      'mobile_verified': mobileVerified,
       'role': role,
       'department': department,
       'isActive': isActive,

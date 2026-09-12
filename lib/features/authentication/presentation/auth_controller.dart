@@ -40,7 +40,6 @@ class AuthController extends Notifier<AuthState> {
   @override
   AuthState build() {
     _authRepository = ref.watch(authRepositoryProvider);
-    // Asynchronously verify existing session without blocking build
     Future.microtask(() => checkAuthStatus());
     return const AuthState();
   }
@@ -61,7 +60,6 @@ class AuthController extends Notifier<AuthState> {
   }
 
   Future<void> login(String email, String password, {bool rememberMe = true}) async {
-    // Guard against duplicate rapid clicks while a login request is already in-flight
     if (state.status == AuthStateStatus.loading) return;
 
     state = state.copyWith(status: AuthStateStatus.loading, errorMessage: null);
@@ -71,6 +69,38 @@ class AuthController extends Notifier<AuthState> {
     } catch (e) {
       final message = ApiException.extractUserMessage(e);
       state = state.copyWith(status: AuthStateStatus.error, errorMessage: message);
+    }
+  }
+
+  Future<int> sendRegistrationOtp({required String name, required String mobile}) async {
+    try {
+      return await _authRepository.sendRegistrationOtp(name: name, mobile: mobile);
+    } catch (e) {
+      final message = ApiException.extractUserMessage(e);
+      state = state.copyWith(status: AuthStateStatus.error, errorMessage: message);
+      rethrow;
+    }
+  }
+
+  Future<void> verifyOtpAndRegister({
+    required String name,
+    required String mobile,
+    required String otp,
+  }) async {
+    if (state.status == AuthStateStatus.loading) return;
+
+    state = state.copyWith(status: AuthStateStatus.loading, errorMessage: null);
+    try {
+      final user = await _authRepository.verifyOtpAndRegister(
+        name: name,
+        mobile: mobile,
+        otp: otp,
+      );
+      state = state.copyWith(status: AuthStateStatus.authenticated, user: user);
+    } catch (e) {
+      final message = ApiException.extractUserMessage(e);
+      state = state.copyWith(status: AuthStateStatus.error, errorMessage: message);
+      rethrow;
     }
   }
 

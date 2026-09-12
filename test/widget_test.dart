@@ -28,6 +28,7 @@ import 'package:document_screening/features/history/presentation/history_screen.
 import 'package:document_screening/features/profile/presentation/profile_screen.dart';
 import 'package:document_screening/features/authentication/domain/user_model.dart';
 import 'package:document_screening/features/authentication/presentation/auth_controller.dart';
+import 'package:document_screening/features/authentication/presentation/register_screen.dart';
 
 void main() {
   group('ApiEndpoints Production Tests', () {
@@ -1035,13 +1036,74 @@ void main() {
           id: '123',
           name: 'Jane Doe',
           email: 'jane@agency.gov',
+          mobile: '+919876543210',
+          mobileVerified: true,
           role: 'OFFICER',
         ),
       );
       expect(state.status, AuthStateStatus.authenticated);
       expect(state.user?.name, 'Jane Doe');
+      expect(state.user?.mobile, '+919876543210');
+      expect(state.user?.mobileVerified, true);
       expect(state.user?.initials, 'JD');
     });
+  });
+
+  group('Officer Registration & Mobile OTP Production Tests', () {
+    test('ApiEndpoints includes registration and admin officer endpoints', () {
+      expect(ApiEndpoints.sendRegistrationOtp, '/api/auth/registration/send-otp');
+      expect(ApiEndpoints.verifyRegistrationOtp, '/api/auth/registration/verify-otp');
+      expect(ApiEndpoints.adminOfficers, '/api/admin/officers');
+    });
+
+    test('UserModel serializes and deserializes mobile verification properties correctly', () {
+      final user = UserModel.fromJson({
+        'id': 'usr_99',
+        'name': 'Officer Vikram',
+        'email': 'vikram@agency.gov.in',
+        'mobile': '+919876543210',
+        'mobile_verified': true,
+        'role': 'OFFICER',
+        'status': 'ACTIVE'
+      });
+      expect(user.id, 'usr_99');
+      expect(user.name, 'Officer Vikram');
+      expect(user.mobile, '+919876543210');
+      expect(user.mobileVerified, true);
+      expect(user.role, 'OFFICER');
+
+      final json = user.toJson();
+      expect(json['mobile'], '+919876543210');
+      expect(json['mobile_verified'], true);
+    });
+
+    for (final width in [320.0, 390.0, 600.0]) {
+      testWidgets('RegisterScreen renders UI elements and inputs without overflow at ${width}px',
+          (WidgetTester tester) async {
+        tester.view.physicalSize = Size(width * 2, 900 * 2);
+        tester.view.devicePixelRatio = 2.0;
+        addTearDown(tester.view.resetPhysicalSize);
+
+        await tester.pumpWidget(
+          const ProviderScope(
+            child: MaterialApp(
+              home: RegisterScreen(),
+            ),
+          ),
+        );
+
+        await tester.pumpAndSettle();
+
+        expect(find.text('OFFICER ONBOARDING'), findsOneWidget);
+        expect(find.text('OFFICER REGISTRATION'), findsOneWidget);
+        expect(find.text('Full Name'), findsOneWidget);
+        expect(find.text('Mobile Number (India)'), findsOneWidget);
+        expect(find.text('+91'), findsOneWidget);
+        expect(find.text('SEND VERIFICATION CODE'), findsOneWidget);
+        expect(find.text('Login here'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+    }
   });
 }
 

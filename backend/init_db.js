@@ -61,21 +61,40 @@ const initDatabase = async () => {
       );
     `);
 
-    // 4. Seed/Upsert default Officer
+    // 4. Seed/Upsert default Officer accounts in Supabase PostgreSQL
     const bcrypt = require('bcryptjs');
-    const officerEmail = 'officer@gmail.com';
-    const officerPassword = 'officer123';
-    const hash = await bcrypt.hash(officerPassword, 10);
+    const hash123456 = await bcrypt.hash('123456', 10);
+    const hashOfficer123 = await bcrypt.hash('officer123', 10);
+    const hashPassword123 = await bcrypt.hash('password123', 10);
+
+    // Primary requested officer
+    await db.query(`
+      INSERT INTO users (name, email, mobile, mobile_verified, password_hash, role, status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      ON CONFLICT (email) 
+      DO UPDATE SET password_hash = EXCLUDED.password_hash, role = 'OFFICER', mobile_verified = true;
+    `, ['Chief Officer', 'officer@gmail.com', '+919876543210', true, hash123456, 'OFFICER', 'ACTIVE']);
+
+    // Quick Test buttons accounts
+    await db.query(`
+      INSERT INTO users (name, email, mobile, mobile_verified, password_hash, role, status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      ON CONFLICT (email) 
+      DO UPDATE SET password_hash = EXCLUDED.password_hash, role = 'OFFICER', mobile_verified = true;
+    `, ['Test Officer', 'officer@test.com', '+919876543211', true, hash123456, 'OFFICER', 'ACTIVE']);
 
     await db.query(`
       INSERT INTO users (name, email, mobile, mobile_verified, password_hash, role, status)
       VALUES ($1, $2, $3, $4, $5, $6, $7)
       ON CONFLICT (email) 
       DO UPDATE SET password_hash = EXCLUDED.password_hash, role = 'OFFICER', mobile_verified = true;
-    `, ['Chief Officer', officerEmail, '+919876543210', true, hash, 'OFFICER', 'ACTIVE']);
+    `, ['Agency Officer', 'officer@agency.gov.in', '+919876543212', true, hashPassword123, 'OFFICER', 'ACTIVE']);
 
-    console.log(`Officer account seeded: ${officerEmail} / ${officerPassword}`);
-    console.log('Database tables and seed created successfully!');
+    console.log('Officer accounts seeded in Supabase:');
+    console.log(' - officer@gmail.com / 123456');
+    console.log(' - officer@test.com / 123456');
+    console.log(' - officer@agency.gov.in / password123');
+    console.log('Database tables and seed updated successfully in Supabase!');
   } catch (error) {
     console.error('Error creating database tables:', error);
   } finally {

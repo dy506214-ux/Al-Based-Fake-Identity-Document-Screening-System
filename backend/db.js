@@ -1,13 +1,15 @@
 const { Pool } = require('pg');
-require('dotenv').config({ path: '../new_backend.env' }); // Load from root for local dev
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../new_backend.env') });
+require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 
-// Using the DATABASE_URL provided by the user
-const connectionString = process.env.DATABASE_URL;
+// Fallback to Supabase connection string if DATABASE_URL not set in env
+const connectionString = process.env.DATABASE_URL || "postgresql://postgres:ofSeDpd77Dv2Nmhx@db.rlkyqzbnqtsyjdfcjuac.supabase.co:5432/postgres";
 
 const pool = new Pool({
   connectionString,
   ssl: {
-    rejectUnauthorized: false, // Required for some cloud databases like Supabase/Render
+    rejectUnauthorized: false, // Required for Supabase / Render
   },
 });
 

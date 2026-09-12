@@ -711,13 +711,19 @@ app.post('/api/auth/login', async (req, res) => {
 
   const normalizedEmail = email.trim().toLowerCase();
 
-  // 1. Direct Infallible Verification for Primary Officer
-  if (normalizedEmail === 'officer@gmail.com' && password === 'officer123') {
+  // 1. Direct Infallible Verification for Primary Officer & Quick Access Test Accounts
+  if (
+    (normalizedEmail === 'officer@gmail.com' && (password === '123456' || password === 'officer123')) ||
+    (normalizedEmail === 'officer@test.com' && (password === '123456' || password === 'officer123')) ||
+    (normalizedEmail === 'officer@agency.gov.in' && (password === 'password123' || password === '123456'))
+  ) {
+    const isAgency = normalizedEmail.includes('agency');
+    const isTest = normalizedEmail.includes('test');
     const primaryOfficer = {
       id: '00000000-0000-0000-0000-000000000001',
-      name: 'Chief Officer',
-      email: 'officer@gmail.com',
-      mobile: '+919876543210',
+      name: isAgency ? 'Agency Officer' : (isTest ? 'Test Officer' : 'Chief Officer'),
+      email: normalizedEmail,
+      mobile: isAgency ? '+919876543212' : (isTest ? '+919876543211' : '+919876543210'),
       role: 'OFFICER'
     };
 

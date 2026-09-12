@@ -84,49 +84,84 @@ const normalizeMobile = (rawMobile) => {
   return null;
 };
 
-// Helper: Generate Unique Officer Login ID (e.g. 'dhirendraofficer')
-const generateLoginId = async (fullName, mobileDigits) => {
-  const cleanName = fullName.toLowerCase().replace(/[^a-z0-9]/g, '');
-  const baseId = cleanName.length >= 3 ? `${cleanName}officer` : `officer${mobileDigits.slice(-4)}`;
-  
-  let candidate = baseId;
+// Helper: Generate Unique Officer Login ID / Email (e.g. 'dhirendraofficer@dociscan.gov.in')
+const generateLoginId = async (fullName, mobileDigits, variantIndex = 0) => {
+  const parts = fullName.toLowerCase().trim().split(/\s+/).filter(Boolean).map(p => p.replace(/[^a-z0-9]/g, ''));
+  const first = parts[0] || 'officer';
+  const last = parts.length > 1 ? parts[parts.length - 1] : '';
+  const domain = (process.env.OFFICER_EMAIL_DOMAIN || 'dociscan.gov.in').trim();
+  const mobileLast4 = (mobileDigits || '').slice(-4) || '2026';
+
+  const baseCandidates = [];
+  if (last) {
+    baseCandidates.push(`${first}officer`);
+    baseCandidates.push(`${first}.${last}`);
+    baseCandidates.push(`officer.${first}.${last}`);
+    baseCandidates.push(`${first}${last}officer`);
+    baseCandidates.push(`${first}.${last}${mobileLast4}`);
+  } else {
+    baseCandidates.push(`${first}officer`);
+    baseCandidates.push(`officer.${first}`);
+    baseCandidates.push(`${first}.${mobileLast4}`);
+    baseCandidates.push(`${first}officer${mobileLast4}`);
+  }
+
+  let attemptIndex = variantIndex % baseCandidates.length;
+  let cycle = Math.floor(variantIndex / baseCandidates.length);
+  let baseCandidate = baseCandidates[attemptIndex];
+  if (cycle > 0) {
+    baseCandidate = `${baseCandidate}${cycle < 10 ? '0' + cycle : cycle}`;
+  }
+
+  let candidateEmail = `${baseCandidate}@${domain}`;
   let suffix = 1;
-  
+
   while (true) {
     try {
-      const res = await db.query('SELECT id FROM users WHERE LOWER(email) = $1', [candidate]);
-      if (res.rows.length === 0 && !registeredOfficersStore.has(candidate)) {
-        return candidate;
+      const res = await db.query('SELECT id FROM users WHERE LOWER(email) = $1 OR LOWER(email) = $2', [candidateEmail, baseCandidate]);
+      if (res.rows.length === 0 && !registeredOfficersStore.has(candidateEmail) && !registeredOfficersStore.has(baseCandidate)) {
+        return candidateEmail;
       }
     } catch (_) {
-      if (!registeredOfficersStore.has(candidate)) {
-        return candidate;
+      if (!registeredOfficersStore.has(candidateEmail) && !registeredOfficersStore.has(baseCandidate)) {
+        return candidateEmail;
       }
     }
+    const numStr = suffix < 10 ? `0${suffix}` : `${suffix}`;
+    candidateEmail = `${baseCandidate}${numStr}@${domain}`;
     suffix++;
-    candidate = `${baseId}${suffix}`;
+    if (suffix > 50) return `${baseCandidate}_${Date.now()}@${domain}`;
   }
 };
 
-// Helper: Generate Cryptographically Secure Temporary Password (10 chars: upper, lower, digits, symbols)
-const generateSecurePassword = () => {
+// Helper: Generate Cryptographically Secure Strong Password (12+ chars: upper, lower, digits, symbols)
+const generateSecurePassword = (length = 12) => {
   const uppers = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
   const lowers = 'abcdefghijkmnopqrstuvwxyz';
   const digits = '23456789';
   const symbols = '!@#$%&*';
 
-  let pwd = '';
-  pwd += uppers[crypto.randomInt(0, uppers.length)];
-  pwd += lowers[crypto.randomInt(0, lowers.length)];
-  pwd += digits[crypto.randomInt(0, digits.length)];
-  pwd += symbols[crypto.randomInt(0, symbols.length)];
-
-  const allChars = uppers + lowers + digits + symbols;
-  for (let i = 0; i < 6; i++) {
-    pwd += allChars[crypto.randomInt(0, allChars.length)];
+  let pwd = [];
+  // Ensure at least 2 of each required character category
+  for (let i = 0; i < 2; i++) {
+    pwd.push(uppers[crypto.randomInt(0, uppers.length)]);
+    pwd.push(lowers[crypto.randomInt(0, lowers.length)]);
+    pwd.push(digits[crypto.randomInt(0, digits.length)]);
+    pwd.push(symbols[crypto.randomInt(0, symbols.length)]);
   }
 
-  return pwd.split('').sort(() => crypto.randomInt(-1, 2)).join('');
+  const allChars = uppers + lowers + digits + symbols;
+  while (pwd.length < Math.max(12, length)) {
+    pwd.push(allChars[crypto.randomInt(0, allChars.length)]);
+  }
+
+  // Shuffle securely
+  for (let i = pwd.length - 1; i > 0; i--) {
+    const j = crypto.randomInt(0, i + 1);
+    [pwd[i], pwd[j]] = [pwd[j], pwd[i]];
+  }
+
+  return pwd.join('');
 };
 
 // Helper: Real Fast2SMS Gateway Dispatcher (Production Indian Telecom SMS)
@@ -263,10 +298,55 @@ app.get('/api/health', (req, res) => {
 app.get('/health', (req, res) => res.json({ success: true, status: 'healthy', uptime: process.uptime() }));
 
 // -------------------------------------------------------------
-// REGISTRATION: CREATE OFFICER CREDENTIALS (AUTOMATIC FLOW)
+// REGISTRATION: GENERATE AI LOGIN ID / EMAIL
 // -------------------------------------------------------------
-app.post('/api/auth/registration/create-credentials', async (req, res) => {
-  const { name, mobile } = req.body;
+app.post('/api/auth/registration/generate-login-id', async (req, res) => {
+  const { name, mobile, variantIndex } = req.body;
+  const fullName = (name || '').trim() || 'Officer';
+  const normalized = normalizeMobile(mobile || '') || '';
+  const raw10 = normalized.replace(/\D/g, '').slice(-10) || '2026';
+  const vIndex = typeof variantIndex === 'number' ? variantIndex : 0;
+
+  try {
+    const loginId = await generateLoginId(fullName, raw10, vIndex);
+    return res.json({
+      success: true,
+      email: loginId,
+      loginId: loginId
+    });
+  } catch (err) {
+    console.error('Generate Login ID Error:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to generate unique login ID suggestion.'
+    });
+  }
+});
+
+// -------------------------------------------------------------
+// REGISTRATION: GENERATE AI SECURE PASSWORD
+// -------------------------------------------------------------
+app.post('/api/auth/registration/generate-password', async (req, res) => {
+  try {
+    const password = generateSecurePassword(12);
+    return res.json({
+      success: true,
+      password: password
+    });
+  } catch (err) {
+    console.error('Generate Password Error:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to generate secure password.'
+    });
+  }
+});
+
+// -------------------------------------------------------------
+// REGISTRATION: CREATE OFFICER ACCOUNT (VERIFIED REAL DB COMMIT)
+// -------------------------------------------------------------
+app.post('/api/auth/registration/create-account', async (req, res) => {
+  const { name, mobile, email, password } = req.body;
 
   if (!name || name.trim().length < 3) {
     return res.status(400).json({
@@ -283,13 +363,29 @@ app.post('/api/auth/registration/create-credentials', async (req, res) => {
     });
   }
 
+  const cleanEmail = (email || '').trim().toLowerCase();
+  if (!cleanEmail || cleanEmail.length < 4) {
+    return res.status(400).json({
+      success: false,
+      message: 'Please enter or generate a valid Email / Login ID.'
+    });
+  }
+
+  const cleanPassword = (password || '').trim();
+  if (!cleanPassword || cleanPassword.length < 8) {
+    return res.status(400).json({
+      success: false,
+      message: 'Password must be at least 8 characters long.'
+    });
+  }
+
   const raw10 = normalized.replace(/\D/g, '').slice(-10);
 
   try {
-    // 1. Check duplicate mobile in database
+    // 1. Check duplicate mobile in database & HA store
     try {
-      const existing = await db.query('SELECT id FROM users WHERE mobile = $1', [normalized]);
-      if (existing.rows.length > 0) {
+      const existingMobile = await db.query('SELECT id FROM users WHERE mobile = $1', [normalized]);
+      if (existingMobile.rows.length > 0) {
         return res.status(400).json({
           success: false,
           message: 'An officer account already exists for this mobile number. Please login.'
@@ -304,21 +400,35 @@ app.post('/api/auth/registration/create-credentials', async (req, res) => {
       }
     }
 
-    // 2. Generate unique login identifier (e.g. dhirendraofficer)
-    const loginId = await generateLoginId(name.trim(), raw10);
+    // 2. Check duplicate email / login ID in database & HA store
+    try {
+      const existingEmail = await db.query('SELECT id FROM users WHERE LOWER(email) = $1', [cleanEmail]);
+      if (existingEmail.rows.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Login ID already exists. Click AI GENERATE or enter another ID.'
+        });
+      }
+    } catch (_) {
+      if (registeredOfficersStore.has(cleanEmail)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Login ID already exists. Click AI GENERATE or enter another ID.'
+        });
+      }
+    }
 
-    // 3. Generate cryptographically secure temporary password (e.g. Dh!7Kp@29Qx)
-    const plainPassword = generateSecurePassword();
-    const passwordHash = await bcrypt.hash(plainPassword, 10);
+    // 3. Cryptographically hash password using bcrypt
+    const passwordHash = await bcrypt.hash(cleanPassword, 10);
 
-    // 4. Insert into database
+    // 4. Create new Officer user record
     const officerId = crypto.randomUUID();
     const officerName = name.trim();
 
     let createdOfficer = {
       id: officerId,
       name: officerName,
-      email: loginId,
+      email: cleanEmail,
       mobile: normalized,
       role: 'OFFICER',
       mobile_verified: true,
@@ -330,7 +440,7 @@ app.post('/api/auth/registration/create-credentials', async (req, res) => {
         `INSERT INTO users (id, name, email, mobile, mobile_verified, password_hash, role, status)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
          RETURNING id, name, email, mobile, role, mobile_verified, status`,
-        [officerId, officerName, loginId, normalized, true, passwordHash, 'OFFICER', 'ACTIVE']
+        [officerId, officerName, cleanEmail, normalized, true, passwordHash, 'OFFICER', 'ACTIVE']
       );
       if (insertRes.rows.length > 0) {
         createdOfficer = insertRes.rows[0];
@@ -340,10 +450,10 @@ app.post('/api/auth/registration/create-credentials', async (req, res) => {
     }
 
     registeredOfficersStore.set(normalized, createdOfficer);
-    registeredOfficersStore.set(loginId, { ...createdOfficer, password_hash: passwordHash });
+    registeredOfficersStore.set(cleanEmail, { ...createdOfficer, password_hash: passwordHash });
 
     const maskedMobile = `******${raw10.slice(6)}`;
-    console.log(`[Officer Registration] Created credentials for mobile=${maskedMobile}, loginId=${loginId}`);
+    console.log(`[Officer Registration] Created account: mobile=${maskedMobile}, email=${cleanEmail}, role=OFFICER`);
 
     // Generate JWT token
     const token = jwt.sign(
@@ -357,20 +467,37 @@ app.post('/api/auth/registration/create-credentials', async (req, res) => {
       message: 'Officer account created successfully.',
       token: token,
       credentials: {
-        loginId: loginId,
-        password: plainPassword,
+        loginId: cleanEmail,
+        password: cleanPassword,
         name: officerName,
         mobile: normalized
       },
       user: createdOfficer
     });
   } catch (err) {
-    console.error('Create Credentials Error:', err);
+    console.error('Create Account Error:', err);
     return res.status(500).json({
       success: false,
       message: 'Unable to create officer account. Please try again.'
     });
   }
+});
+
+// Alias: create-credentials supports both body types
+app.post('/api/auth/registration/create-credentials', async (req, res) => {
+  const { name, mobile, email, password } = req.body;
+  if (email && password) {
+    req.url = '/api/auth/registration/create-account';
+    return app._router.handle(req, res);
+  }
+
+  const raw10 = (mobile || '').replace(/\D/g, '').slice(-10);
+  const genEmail = await generateLoginId((name || 'officer').trim(), raw10);
+  const genPassword = generateSecurePassword(12);
+  req.body.email = genEmail;
+  req.body.password = genPassword;
+  req.url = '/api/auth/registration/create-account';
+  return app._router.handle(req, res);
 });
 
 // -------------------------------------------------------------

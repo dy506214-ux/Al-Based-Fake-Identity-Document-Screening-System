@@ -28,6 +28,7 @@ import 'package:document_screening/features/history/presentation/history_screen.
 import 'package:document_screening/features/profile/presentation/profile_screen.dart';
 import 'package:document_screening/features/authentication/domain/user_model.dart';
 import 'package:document_screening/features/authentication/domain/auth_repository.dart';
+import 'package:document_screening/features/authentication/data/auth_repository_impl.dart';
 import 'package:document_screening/features/authentication/presentation/auth_controller.dart';
 import 'package:document_screening/features/authentication/presentation/register_screen.dart';
 import 'package:document_screening/features/authentication/presentation/credentials_display_screen.dart';
@@ -1102,7 +1103,10 @@ void main() {
         expect(find.text('Full Name'), findsOneWidget);
         expect(find.text('Mobile Number (India)'), findsOneWidget);
         expect(find.text('+91'), findsOneWidget);
-        expect(find.text('CREATE ID & PASSWORD'), findsOneWidget);
+        expect(find.text('Generate New Email ID'), findsOneWidget);
+        expect(find.text('Generate New Password'), findsOneWidget);
+        expect(find.text('AI GENERATE'), findsNWidgets(2));
+        expect(find.text('CREATE ACCOUNT'), findsOneWidget);
         expect(find.text('Login here'), findsOneWidget);
         expect(tester.takeException(), isNull);
       });
@@ -1230,24 +1234,30 @@ void main() {
   group('Officer Credential Generation & Display Flow Tests', () {
     test('GeneratedCredentials JSON serialization and model fields work correctly', () {
       final json = {
-        'loginId': 'dhirendraofficer',
-        'password': 'Dh!7Kp@29Qx',
-        'name': 'Dhirendra Kumar',
-        'mobile': '9876543210',
+        'loginId': 'dhirendraofficer@dociscan.gov.in',
+        'password': 'Dh!7Kp@29Qx#',
+        'name': 'Dhirendra Kumar Yadav',
+        'mobile': '7704849886',
       };
 
       final creds = GeneratedCredentials.fromJson(json);
-      expect(creds.loginId, 'dhirendraofficer');
-      expect(creds.password, 'Dh!7Kp@29Qx');
-      expect(creds.name, 'Dhirendra Kumar');
-      expect(creds.mobile, '9876543210');
+      expect(creds.loginId, 'dhirendraofficer@dociscan.gov.in');
+      expect(creds.password, 'Dh!7Kp@29Qx#');
+      expect(creds.name, 'Dhirendra Kumar Yadav');
+      expect(creds.mobile, '7704849886');
       expect(ApiEndpoints.createCredentials, '/api/auth/registration/create-credentials');
+      expect(ApiEndpoints.generateLoginId, '/api/auth/registration/generate-login-id');
+      expect(ApiEndpoints.generatePassword, '/api/auth/registration/generate-password');
+      expect(ApiEndpoints.createAccount, '/api/auth/registration/create-account');
     });
 
-    testWidgets('RegisterScreen renders CREATE ID & PASSWORD button and name/mobile inputs without OTP fields', (tester) async {
+    testWidgets('RegisterScreen renders 4 fields, 2 AI GENERATE buttons, and CREATE ACCOUNT', (tester) async {
       await tester.pumpWidget(
-        const ProviderScope(
-          child: MaterialApp(
+        ProviderScope(
+          overrides: [
+            authRepositoryProvider.overrideWithValue(_MockTestAuthRepository()),
+          ],
+          child: const MaterialApp(
             home: RegisterScreen(),
           ),
         ),
@@ -1259,22 +1269,43 @@ void main() {
       expect(find.text('Full Name'), findsOneWidget);
       expect(find.text('Mobile Number (India)'), findsOneWidget);
       expect(find.text('+91'), findsOneWidget);
-      expect(find.text('CREATE ID & PASSWORD'), findsOneWidget);
+      expect(find.text('Generate New Email ID'), findsOneWidget);
+      expect(find.text('Generate New Password'), findsOneWidget);
+      expect(find.byKey(const Key('generateEmailButton')), findsOneWidget);
+      expect(find.byKey(const Key('generatePasswordButton')), findsOneWidget);
+      expect(find.byKey(const Key('createAccountButton')), findsOneWidget);
+      expect(find.text('CREATE ACCOUNT'), findsOneWidget);
       expect(find.text('Login here'), findsOneWidget);
 
-      // Verify OTP elements are NOT present on initial registration
+      // Verify OTP elements are NOT present
       expect(find.text('SEND VERIFICATION CODE'), findsNothing);
       expect(find.text('VERIFY OTP & REGISTER'), findsNothing);
       expect(find.text('VERIFY MOBILE NUMBER'), findsNothing);
+
+      // Test generating email without full name shows guidance error
+      await tester.tap(find.byKey(const Key('generateEmailButton')));
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(find.textContaining('Please enter your Full Name first'), findsOneWidget);
+
+      // Fill name and generate email & password
+      await tester.enterText(find.byKey(const Key('registerFullNameField')), 'Dhirendra Yadav');
+      await tester.tap(find.byKey(const Key('generateEmailButton')));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.byKey(const Key('registerEmailField')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('generatePasswordButton')));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.byKey(const Key('registerPasswordField')), findsOneWidget);
+
       expect(tester.takeException(), isNull);
     });
 
     testWidgets('CredentialsDisplayScreen renders all security elements, credentials, copy buttons, and done CTA', (tester) async {
       const testCredentials = GeneratedCredentials(
-        loginId: 'dhirendraofficer',
-        password: 'Dh!7Kp@29Qx',
-        name: 'Dhirendra Kumar',
-        mobile: '9876543210',
+        loginId: 'dhirendraofficer@dociscan.gov.in',
+        password: 'Dh!7Kp@29Qx#',
+        name: 'Dhirendra Kumar Yadav',
+        mobile: '7704849886',
       );
 
       await tester.pumpWidget(
@@ -1286,10 +1317,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('ACCOUNT CREATED'), findsOneWidget);
-      expect(find.text('Dhirendra Kumar'), findsOneWidget);
-      expect(find.text('+91 9876543210'), findsOneWidget);
+      expect(find.text('Dhirendra Kumar Yadav'), findsOneWidget);
+      expect(find.text('+91 7704849886'), findsOneWidget);
       expect(find.text('LOGIN ID'), findsOneWidget);
-      expect(find.text('dhirendraofficer'), findsOneWidget);
+      expect(find.text('dhirendraofficer@dociscan.gov.in'), findsOneWidget);
       expect(find.text('PASSWORD'), findsOneWidget);
 
       // Screenshot alert banner
@@ -1309,7 +1340,7 @@ void main() {
       expect(toggleButton, findsOneWidget);
       await tester.tap(toggleButton);
       await tester.pumpAndSettle();
-      expect(find.text('Dh!7Kp@29Qx'), findsOneWidget);
+      expect(find.text('Dh!7Kp@29Qx#'), findsOneWidget);
 
       // Done CTA button
       expect(find.byKey(const Key('credentialsDoneButton')), findsOneWidget);
@@ -1317,6 +1348,62 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   });
+}
+
+class _MockTestAuthRepository implements AuthRepository {
+  @override
+  Future<UserModel> login(String email, String password, {bool rememberMe = true}) async {
+    return const UserModel(id: 'test-id', name: 'Officer Test', email: 'officer@test.com', role: 'OFFICER');
+  }
+
+  @override
+  Future<String> generateOfficerEmail({required String name, required String mobile, int variantIndex = 0}) async {
+    return 'dhirendraofficer@dociscan.gov.in';
+  }
+
+  @override
+  Future<String> generateOfficerPassword() async {
+    return 'Dh!7Kp@29Qx#';
+  }
+
+  @override
+  Future<GeneratedCredentials> createOfficerAccount({
+    required String name,
+    required String mobile,
+    required String email,
+    required String password,
+  }) async {
+    return GeneratedCredentials(
+      loginId: email,
+      password: password,
+      name: name,
+      mobile: mobile,
+    );
+  }
+
+  @override
+  Future<GeneratedCredentials> createOfficerCredentials({required String name, required String mobile}) async {
+    return GeneratedCredentials(
+      loginId: 'dhirendraofficer@dociscan.gov.in',
+      password: 'Dh!7Kp@29Qx#',
+      name: name,
+      mobile: mobile,
+    );
+  }
+
+  @override
+  Future<int> sendRegistrationOtp({required String name, required String mobile}) async => 60;
+
+  @override
+  Future<UserModel> verifyOtpAndRegister({required String name, required String mobile, required String otp}) async {
+    return const UserModel(id: 'test-id', name: 'Officer Test', email: 'officer@test.com', role: 'OFFICER');
+  }
+
+  @override
+  Future<void> logout() async {}
+
+  @override
+  Future<UserModel?> checkAuthStatus() async => null;
 }
 
 

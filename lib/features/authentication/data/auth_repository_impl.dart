@@ -126,6 +126,129 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<String> generateOfficerEmail({
+    required String name,
+    required String mobile,
+    int variantIndex = 0,
+  }) async {
+    final cleanName = name.trim();
+    final cleanMobile = mobile.trim();
+
+    try {
+      final response = await _apiClient.post(
+        ApiEndpoints.generateLoginId,
+        data: {
+          'name': cleanName,
+          'mobile': cleanMobile,
+          'variantIndex': variantIndex,
+        },
+      );
+
+      if (response.data != null && response.data['success'] == true) {
+        return response.data['email']?.toString() ??
+            response.data['loginId']?.toString() ??
+            '${cleanName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '')}officer@dociscan.gov.in';
+      } else {
+        throw ValidationException(
+          response.data?['message'] ?? 'Failed to generate login ID suggestion.',
+          statusCode: 400,
+        );
+      }
+    } on ApiException {
+      rethrow;
+    } on DioException catch (e) {
+      throw ApiException.fromDioException(e);
+    } catch (e) {
+      final msg = ApiException.extractUserMessage(e);
+      throw UnknownApiException(msg);
+    }
+  }
+
+  @override
+  Future<String> generateOfficerPassword() async {
+    try {
+      final response = await _apiClient.post(
+        ApiEndpoints.generatePassword,
+        data: {},
+      );
+
+      if (response.data != null && response.data['success'] == true) {
+        return response.data['password']?.toString() ?? '';
+      } else {
+        throw ValidationException(
+          response.data?['message'] ?? 'Failed to generate secure password.',
+          statusCode: 400,
+        );
+      }
+    } on ApiException {
+      rethrow;
+    } on DioException catch (e) {
+      throw ApiException.fromDioException(e);
+    } catch (e) {
+      final msg = ApiException.extractUserMessage(e);
+      throw UnknownApiException(msg);
+    }
+  }
+
+  @override
+  Future<GeneratedCredentials> createOfficerAccount({
+    required String name,
+    required String mobile,
+    required String email,
+    required String password,
+  }) async {
+    final cleanName = name.trim();
+    final cleanMobile = mobile.trim();
+    final cleanEmail = email.trim();
+    final cleanPassword = password.trim();
+
+    try {
+      final response = await _apiClient.post(
+        ApiEndpoints.createAccount,
+        data: {
+          'name': cleanName,
+          'mobile': cleanMobile,
+          'email': cleanEmail,
+          'password': cleanPassword,
+        },
+      );
+
+      if (response.data != null && response.data['success'] == true) {
+        final token = response.data['token']?.toString();
+        if (token != null && token.isNotEmpty) {
+          await _secureStorage.saveTokens(
+            accessToken: token,
+            refreshToken: token,
+          );
+        }
+
+        final userJson = response.data['user'] as Map<String, dynamic>?;
+        if (userJson != null) {
+          final user = UserModel.fromJson(userJson);
+          await _secureStorage.saveUser(jsonEncode(user.toJson()));
+          await _secureStorage.saveRememberMe(rememberMe: true, email: cleanEmail);
+        }
+
+        return GeneratedCredentials.fromJson(
+          Map<String, dynamic>.from(response.data['credentials'] ?? {}),
+        );
+      } else {
+        throw ValidationException(
+          response.data?['message'] ?? 'Failed to create officer account.',
+          statusCode: 400,
+        );
+      }
+    } on ApiException {
+      rethrow;
+    } on DioException catch (e) {
+      throw ApiException.fromDioException(e);
+    } catch (e) {
+      final msg = ApiException.extractUserMessage(e);
+      throw UnknownApiException(msg);
+    }
+  }
+
+  @override
   Future<GeneratedCredentials> createOfficerCredentials({
     required String name,
     required String mobile,

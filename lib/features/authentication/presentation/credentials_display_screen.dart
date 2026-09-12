@@ -242,30 +242,37 @@ Keep this securely for future logins.''';
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.badge_outlined, size: 20, color: AppColors.primary),
-                              const SizedBox(width: 10),
+                              const Icon(Icons.badge_outlined, size: 19, color: AppColors.primary),
+                              const SizedBox(width: 8),
                               Expanded(
-                                child: SelectableText(
-                                  widget.credentials.loginId,
-                                  style: AppTypography.titleMedium.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.5,
+                                child: SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: SelectableText(
+                                    widget.credentials.loginId,
+                                    style: AppTypography.bodyMedium.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13,
+                                    ),
                                   ),
                                 ),
                               ),
+                              const SizedBox(width: 6),
                               OutlinedButton.icon(
                                 key: const Key('copyLoginIdButton'),
                                 onPressed: _copyLoginId,
                                 style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                   minimumSize: Size.zero,
                                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                 ),
                                 icon: Icon(
                                   _copiedLoginId ? Icons.check_rounded : Icons.copy_rounded,
-                                  size: 14,
+                                  size: 13,
                                 ),
-                                label: Text(_copiedLoginId ? 'Copied' : 'Copy'),
+                                label: Text(
+                                  _copiedLoginId ? 'Copied' : 'Copy',
+                                  style: const TextStyle(fontSize: 11),
+                                ),
                               ),
                             ],
                           ),
@@ -293,27 +300,34 @@ Keep this securely for future logins.''';
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.lock_outline_rounded, size: 20, color: AppColors.primary),
-                              const SizedBox(width: 10),
+                              const Icon(Icons.lock_outline_rounded, size: 19, color: AppColors.primary),
+                              const SizedBox(width: 8),
                               Expanded(
-                                child: SelectableText(
-                                  _isPasswordVisible
-                                      ? widget.credentials.password
-                                      : '•' * widget.credentials.password.length,
-                                  style: AppTypography.titleMedium.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: _isPasswordVisible ? 0.8 : 2.5,
-                                    fontFamily: 'Courier',
+                                child: SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: SelectableText(
+                                    _isPasswordVisible
+                                        ? widget.credentials.password
+                                        : '•' * widget.credentials.password.length,
+                                    style: AppTypography.bodyMedium.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13,
+                                      letterSpacing: _isPasswordVisible ? 0.6 : 2.0,
+                                      fontFamily: 'Courier',
+                                    ),
                                   ),
                                 ),
                               ),
+                              const SizedBox(width: 4),
                               IconButton(
                                 key: const Key('togglePasswordVisibilityButton'),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
                                 icon: Icon(
                                   _isPasswordVisible
                                       ? Icons.visibility_off_outlined
                                       : Icons.visibility_outlined,
-                                  size: 20,
+                                  size: 18,
                                   color: theme.iconTheme.color,
                                 ),
                                 onPressed: () {
@@ -323,19 +337,23 @@ Keep this securely for future logins.''';
                                 },
                                 tooltip: _isPasswordVisible ? 'Hide Password' : 'Show Password',
                               ),
+                              const SizedBox(width: 4),
                               OutlinedButton.icon(
                                 key: const Key('copyPasswordButton'),
                                 onPressed: _copyPassword,
                                 style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                   minimumSize: Size.zero,
                                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                 ),
                                 icon: Icon(
                                   _copiedPassword ? Icons.check_rounded : Icons.copy_rounded,
-                                  size: 14,
+                                  size: 13,
                                 ),
-                                label: Text(_copiedPassword ? 'Copied' : 'Copy'),
+                                label: Text(
+                                  _copiedPassword ? 'Copied' : 'Copy',
+                                  style: const TextStyle(fontSize: 11),
+                                ),
                               ),
                             ],
                           ),
@@ -422,11 +440,15 @@ Keep this securely for future logins.''';
             color: theme.textTheme.bodySmall?.color ?? AppColors.textSecondary,
           ),
         ),
-        const Spacer(),
-        Text(
-          value,
-          style: AppTypography.bodyMedium.copyWith(
-            fontWeight: FontWeight.w600,
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            value,
+            textAlign: TextAlign.end,
+            style: AppTypography.bodyMedium.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],

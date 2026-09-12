@@ -72,6 +72,54 @@ class AuthController extends Notifier<AuthState> {
     }
   }
 
+  Future<String> generateOfficerEmail({
+    required String name,
+    required String mobile,
+    int variantIndex = 0,
+  }) async {
+    try {
+      return await _authRepository.generateOfficerEmail(
+        name: name,
+        mobile: mobile,
+        variantIndex: variantIndex,
+      );
+    } catch (e) {
+      final message = ApiException.extractUserMessage(e);
+      state = state.copyWith(status: AuthStateStatus.error, errorMessage: message);
+      rethrow;
+    }
+  }
+
+  Future<String> generateOfficerPassword() async {
+    try {
+      return await _authRepository.generateOfficerPassword();
+    } catch (e) {
+      final message = ApiException.extractUserMessage(e);
+      state = state.copyWith(status: AuthStateStatus.error, errorMessage: message);
+      rethrow;
+    }
+  }
+
+  Future<GeneratedCredentials> createOfficerAccount({
+    required String name,
+    required String mobile,
+    required String email,
+    required String password,
+  }) async {
+    try {
+      return await _authRepository.createOfficerAccount(
+        name: name,
+        mobile: mobile,
+        email: email,
+        password: password,
+      );
+    } catch (e) {
+      final message = ApiException.extractUserMessage(e);
+      state = state.copyWith(status: AuthStateStatus.error, errorMessage: message);
+      rethrow;
+    }
+  }
+
   Future<GeneratedCredentials> createOfficerCredentials({
     required String name,
     required String mobile,

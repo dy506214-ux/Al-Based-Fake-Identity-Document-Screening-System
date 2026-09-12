@@ -14,6 +14,9 @@ class ApiEndpoints {
   static const String sendRegistrationOtp = '/api/auth/registration/send-otp';
   static const String verifyRegistrationOtp = '/api/auth/registration/verify-otp';
   static const String createCredentials = '/api/auth/registration/create-credentials';
+  static const String generateLoginId = '/api/auth/registration/generate-login-id';
+  static const String generatePassword = '/api/auth/registration/generate-password';
+  static const String createAccount = '/api/auth/registration/create-account';
 
   // Document Management & Screening
   static const String uploadDocument = '/api/documents/upload';

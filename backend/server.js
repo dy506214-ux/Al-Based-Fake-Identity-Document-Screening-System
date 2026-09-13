@@ -1229,7 +1229,7 @@ app.post('/api/documents/:id/process', authenticateToken, async (req, res) => {
 
     const result = await DocumentVerificationService.processScreening({
       officerId: req.user.id,
-      selectedDocumentType: doc ? doc.document_type : (req.body.selectedDocumentType || 'UNKNOWN'),
+      selectedDocumentType: doc ? doc.document_type : (req.body && req.body.selectedDocumentType ? req.body.selectedDocumentType : 'UNKNOWN'),
       fileBuffer: doc ? doc.file_data : null,
       faceBuffer: doc ? doc.selfie_data : null,
       mimeType: doc ? doc.file_content_type : 'image/jpeg'

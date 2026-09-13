@@ -19,6 +19,7 @@ class FaceVerificationScreen extends ConsumerStatefulWidget {
   final String documentId;
   final String selectedDocType;
   final XFile? documentFile;
+  final Uint8List? documentBytes;
   final DocumentQualityReport? documentQuality;
 
   const FaceVerificationScreen({
@@ -26,6 +27,7 @@ class FaceVerificationScreen extends ConsumerStatefulWidget {
     required this.documentId,
     required this.selectedDocType,
     this.documentFile,
+    this.documentBytes,
     this.documentQuality,
   });
 
@@ -125,11 +127,27 @@ class _FaceVerificationScreenState extends ConsumerState<FaceVerificationScreen>
 
   Future<void> _verifyAndProceed() async {
     final face = _capturedFaceFile;
-    if (face == null) {
+    final faceBytes = _capturedFaceBytes;
+
+    if (face == null && faceBytes == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           backgroundColor: Color(0xFFDC2626),
-          content: Text('Face photo is required before proceeding with verification.'),
+          content: Text('Face photo is missing. Please capture your face again.'),
+        ),
+      );
+      return;
+    }
+
+    final hasDocument = widget.documentFile != null ||
+        widget.documentBytes != null ||
+        (widget.documentId.isNotEmpty && !widget.documentId.startsWith('DOC-'));
+
+    if (!hasDocument) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: Color(0xFFDC2626),
+          content: Text('Document image is missing. Please capture the document again.'),
         ),
       );
       return;
@@ -187,20 +205,32 @@ class _FaceVerificationScreenState extends ConsumerState<FaceVerificationScreen>
 
     try {
       final repo = ref.read(documentRepositoryProvider);
+      final ScreeningProcessResult result;
 
-      // 1. Attach face to server database record
-      await repo.attachFacePhoto(
-        documentId: widget.documentId,
-        faceFile: face,
-      );
-
-      // 2. Run full AI screening & biometric comparison
-      final result = await repo.processDocument(widget.documentId);
+      if (widget.documentFile != null || widget.documentBytes != null) {
+        // Direct Unified Screening with document + face
+        result = await repo.processDirectScreening(
+          file: widget.documentFile ?? XFile.fromData(widget.documentBytes!, name: 'document.jpg'),
+          fileBytes: widget.documentBytes,
+          documentType: widget.selectedDocType,
+          faceFile: face,
+          faceBytes: faceBytes,
+        );
+      } else {
+        // ID-based document processing
+        if (face != null || faceBytes != null) {
+          await repo.attachFacePhoto(
+            documentId: widget.documentId,
+            faceFile: face ?? XFile.fromData(faceBytes!, name: 'face.jpg'),
+          );
+        }
+        result = await repo.processDocument(widget.documentId);
+      }
 
       // Record real screened case in session history & dashboard
-      final shortId = widget.documentId.length > 8
-          ? 'SCR-${widget.documentId.substring(widget.documentId.length - 4).toUpperCase()}'
-          : widget.documentId;
+      final shortId = result.id.length > 8
+          ? 'SCR-${result.id.substring(result.id.length - 4).toUpperCase()}'
+          : result.id;
       final isHigh = result.riskLevel.toUpperCase() == 'CRITICAL' || result.riskLevel.toUpperCase() == 'HIGH';
 
       HistoryRepository.recordScreenedCase(

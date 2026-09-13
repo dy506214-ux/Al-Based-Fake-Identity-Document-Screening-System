@@ -113,11 +113,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           final docId = extra['documentId'] as String? ?? 'DOC-${DateTime.now().millisecondsSinceEpoch}';
           final docType = extra['selectedDocType'] as String? ?? 'Passport';
           final docFile = extra['documentFile'] as XFile?;
+          final docBytes = extra['documentBytes'] as Uint8List?;
           final docQuality = extra['documentQuality'] as DocumentQualityReport?;
           return FaceVerificationScreen(
             documentId: docId,
             selectedDocType: docType,
             documentFile: docFile,
+            documentBytes: docBytes,
             documentQuality: docQuality,
           );
         },

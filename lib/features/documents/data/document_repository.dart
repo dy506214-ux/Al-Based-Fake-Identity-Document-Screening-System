@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -134,18 +135,31 @@ class DocumentRepository {
   Future<ScreeningProcessResult> processDirectScreening({
     required XFile file,
     required String documentType,
+    XFile? faceFile,
+    Uint8List? fileBytes,
+    Uint8List? faceBytes,
     String? qrPayload,
     String? rawTextHint,
     double? aspectRatio,
     double? sharpnessScore,
   }) async {
-    final bytes = await file.readAsBytes();
+    final docBytes = fileBytes ?? await file.readAsBytes();
     final fileName = file.name.isNotEmpty ? file.name : 'document.jpg';
 
     final map = <String, dynamic>{
-      'document': MultipartFile.fromBytes(bytes, filename: fileName),
+      'document': MultipartFile.fromBytes(docBytes, filename: fileName),
       'selectedDocumentType': documentType,
     };
+
+    if (faceFile != null || faceBytes != null) {
+      final fBytes = faceBytes ?? (faceFile != null ? await faceFile.readAsBytes() : null);
+      if (fBytes != null) {
+        final faceName = faceFile != null && faceFile.name.isNotEmpty ? faceFile.name : 'face.jpg';
+        map['face'] = MultipartFile.fromBytes(fBytes, filename: faceName);
+        map['selfie'] = MultipartFile.fromBytes(fBytes, filename: faceName);
+      }
+    }
+
     if (qrPayload != null) map['qrPayload'] = qrPayload;
     if (rawTextHint != null) map['rawTextHint'] = rawTextHint;
     if (aspectRatio != null) map['aspectRatio'] = aspectRatio.toString();

@@ -127,8 +127,12 @@ class RiskEngine {
     // Determine Strict Verification Status
     let verificationStatus = 'ANALYSIS_PASSED';
 
+    const onlyExpired = isExpired && (!tamperResult || !tamperResult.failedChecks || tamperResult.failedChecks.every(fc => fc === 'DOCUMENT_EXPIRED'));
+
     if (isTypeMismatch) {
       verificationStatus = 'DOCUMENT_TYPE_MISMATCH';
+    } else if (onlyExpired) {
+      verificationStatus = 'EXPIRED';
     } else if (isTampered) {
       verificationStatus = 'TAMPER_DETECTED';
     } else if (isExpired) {

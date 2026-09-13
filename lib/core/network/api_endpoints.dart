@@ -1,6 +1,6 @@
 class ApiEndpoints {
   // Authoritative Production Backend URL (Render Server)
-  static const String baseUrl = 'https://sih26188-backend.onrender.com';
+  static const String baseUrl = 'https://al-based-fake-identity-document-i43e.onrender.com';
 
   // Supabase Dedicated Endpoint
   static const String supabaseUrl = 'https://rlkyqzbnqtsyjdfcjuac.supabase.co';
@@ -11,6 +11,7 @@ class ApiEndpoints {
   // Authentication & Registration
   static const String login = '/api/auth/login';
   static const String profile = '/api/auth/profile';
+  static const String register = '/api/auth/register';
   static const String sendRegistrationOtp = '/api/auth/registration/send-otp';
   static const String verifyRegistrationOtp = '/api/auth/registration/verify-otp';
   static const String createCredentials = '/api/auth/registration/create-credentials';

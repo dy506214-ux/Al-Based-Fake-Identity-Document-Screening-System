@@ -106,13 +106,16 @@ class AuthController extends Notifier<AuthState> {
     required String email,
     required String password,
   }) async {
+    state = state.copyWith(errorMessage: null);
     try {
-      return await _authRepository.createOfficerAccount(
+      final creds = await _authRepository.createOfficerAccount(
         name: name,
         mobile: mobile,
         email: email,
         password: password,
       );
+      state = state.copyWith(errorMessage: null);
+      return creds;
     } catch (e) {
       final message = ApiException.extractUserMessage(e);
       state = state.copyWith(status: AuthStateStatus.error, errorMessage: message);

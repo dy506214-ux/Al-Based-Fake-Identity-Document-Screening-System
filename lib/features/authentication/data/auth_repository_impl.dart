@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
@@ -125,6 +126,46 @@ class AuthRepositoryImpl implements AuthRepository {
     }
   }
 
+  String _localGenerateEmail(String name, String mobile, int variantIndex) {
+    final parts = name.toLowerCase().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).map((p) => p.replaceAll(RegExp(r'[^a-z0-9]'), '')).toList();
+    final first = parts.isNotEmpty ? parts.first : 'officer';
+    final last = parts.length > 1 ? parts.last : '';
+    final digitsOnly = mobile.replaceAll(RegExp(r'\D'), '');
+    final mobileLast4 = digitsOnly.length >= 4 ? digitsOnly.substring(digitsOnly.length - 4) : '2026';
+
+    final candidates = <String>[];
+    if (last.isNotEmpty) {
+      candidates.add('${first}officer');
+      candidates.add('$first.$last');
+      candidates.add('officer.$first.$last');
+      candidates.add('$first$last$mobileLast4');
+      candidates.add('$first.$last$mobileLast4');
+    } else {
+      candidates.add('${first}officer');
+      candidates.add('officer.$first');
+      candidates.add('$first.$mobileLast4');
+      candidates.add('${first}officer$mobileLast4');
+    }
+
+    final idx = variantIndex % candidates.length;
+    final cycle = variantIndex ~/ candidates.length;
+    final base = candidates[idx] + (cycle > 0 ? (cycle < 10 ? '0$cycle' : '$cycle') : '');
+    return '$base@dociscan.gov.in';
+  }
+
+  String _localGeneratePassword(String name) {
+    final parts = name.split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+    String firstName = parts.isNotEmpty ? parts.first.replaceAll(RegExp(r'[^a-zA-Z]'), '') : 'Officer';
+    if (firstName.isEmpty || firstName.length < 2) firstName = 'Officer';
+    final cleanName = firstName[0].toUpperCase() + firstName.substring(1).toLowerCase();
+
+    final rnd = math.Random.secure();
+    final special = rnd.nextBool() ? '@' : '#';
+    final digits = (100 + rnd.nextInt(899)).toString(); // 3 non-predictable digits
+
+    return '$cleanName$special$digits';
+  }
+
   @override
   Future<String> generateOfficerEmail({
     required String name,
@@ -147,49 +188,31 @@ class AuthRepositoryImpl implements AuthRepository {
       if (response.data != null && response.data['success'] == true) {
         return response.data['email']?.toString() ??
             response.data['loginId']?.toString() ??
-            '${cleanName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '')}officer@dociscan.gov.in';
-      } else {
-        throw ValidationException(
-          response.data?['message'] ?? 'Failed to generate login ID suggestion.',
-          statusCode: 400,
-        );
+            _localGenerateEmail(cleanName, cleanMobile, variantIndex);
       }
-    } on ApiException {
-      rethrow;
-    } on DioException catch (e) {
-      throw ApiException.fromDioException(e);
-    } catch (e) {
-      final msg = ApiException.extractUserMessage(e);
-      throw UnknownApiException(msg);
-    }
+    } catch (_) {}
+
+    return _localGenerateEmail(cleanName, cleanMobile, variantIndex);
   }
 
   @override
   Future<String> generateOfficerPassword({String? name}) async {
+    final rawName = (name ?? '').trim();
     try {
       final response = await _apiClient.post(
         ApiEndpoints.generatePassword,
         data: {
-          if (name != null && name.trim().isNotEmpty) 'name': name.trim(),
+          if (rawName.isNotEmpty) 'name': rawName,
         },
       );
 
       if (response.data != null && response.data['success'] == true) {
-        return response.data['password']?.toString() ?? '';
-      } else {
-        throw ValidationException(
-          response.data?['message'] ?? 'Failed to generate secure password.',
-          statusCode: 400,
-        );
+        final pwd = response.data['password']?.toString();
+        if (pwd != null && pwd.isNotEmpty) return pwd;
       }
-    } on ApiException {
-      rethrow;
-    } on DioException catch (e) {
-      throw ApiException.fromDioException(e);
-    } catch (e) {
-      final msg = ApiException.extractUserMessage(e);
-      throw UnknownApiException(msg);
-    }
+    } catch (_) {}
+
+    return _localGeneratePassword(rawName);
   }
 
   @override
@@ -205,34 +228,69 @@ class AuthRepositoryImpl implements AuthRepository {
     final cleanPassword = password.trim();
 
     try {
-      final response = await _apiClient.post(
-        ApiEndpoints.createAccount,
-        data: {
-          'name': cleanName,
-          'mobile': cleanMobile,
-          'email': cleanEmail,
-          'password': cleanPassword,
-        },
-      );
+      Response response;
+      try {
+        response = await _apiClient.post(
+          ApiEndpoints.createAccount,
+          data: {
+            'name': cleanName,
+            'fullName': cleanName,
+            'mobile': cleanMobile,
+            'email': cleanEmail,
+            'loginId': cleanEmail,
+            'password': cleanPassword,
+            'role': 'OFFICER',
+          },
+        );
+      } on ApiException catch (apiErr) {
+        if (apiErr is NotFoundException || (apiErr.statusCode == 404)) {
+          response = await _apiClient.post(
+            ApiEndpoints.register,
+            data: {
+              'name': cleanName,
+              'fullName': cleanName,
+              'mobile': cleanMobile,
+              'email': cleanEmail,
+              'loginId': cleanEmail,
+              'password': cleanPassword,
+              'role': 'OFFICER',
+            },
+          );
+        } else {
+          rethrow;
+        }
+      }
 
-      if (response.data != null && response.data['success'] == true) {
-        final token = response.data['token']?.toString();
-        if (token != null && token.isNotEmpty) {
+      if (response.data != null && (response.data['success'] == true || response.statusCode == 201 || response.statusCode == 200)) {
+        String? token = response.data['token']?.toString();
+        Map<String, dynamic>? userJson = response.data['user'] as Map<String, dynamic>?;
+
+        // Immediately authenticate with the created credentials to establish session
+        if (token == null || token.isEmpty) {
+          try {
+            final loginUser = await login(cleanEmail, cleanPassword, rememberMe: true);
+            userJson = loginUser.toJson();
+          } catch (_) {
+            // Non-fatal if immediate auto-login handles later
+          }
+        } else {
           await _secureStorage.saveTokens(
             accessToken: token,
             refreshToken: token,
           );
+          if (userJson != null) {
+            final user = UserModel.fromJson(userJson);
+            await _secureStorage.saveUser(jsonEncode(user.toJson()));
+            await _secureStorage.saveRememberMe(rememberMe: true, email: cleanEmail);
+          }
         }
 
-        final userJson = response.data['user'] as Map<String, dynamic>?;
-        if (userJson != null) {
-          final user = UserModel.fromJson(userJson);
-          await _secureStorage.saveUser(jsonEncode(user.toJson()));
-          await _secureStorage.saveRememberMe(rememberMe: true, email: cleanEmail);
-        }
-
-        return GeneratedCredentials.fromJson(
-          Map<String, dynamic>.from(response.data['credentials'] ?? {}),
+        final credsMap = response.data['credentials'] as Map<String, dynamic>?;
+        return GeneratedCredentials(
+          loginId: credsMap?['loginId']?.toString() ?? credsMap?['email']?.toString() ?? cleanEmail,
+          password: credsMap?['password']?.toString() ?? cleanPassword,
+          name: credsMap?['name']?.toString() ?? credsMap?['fullName']?.toString() ?? cleanName,
+          mobile: credsMap?['mobile']?.toString() ?? cleanMobile,
         );
       } else {
         throw ValidationException(

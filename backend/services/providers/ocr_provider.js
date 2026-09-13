@@ -113,9 +113,7 @@ class OCRProvider {
                               textUpper.includes('MERA AADHAAR');
 
     if (aadhaarMatch || isAadhaarKeywords) {
-      if (expectedDocType === 'AADHAAR' || expectedDocType === 'UNKNOWN') {
-        detectedDocType = 'AADHAAR';
-      }
+      detectedDocType = 'AADHAAR';
       if (aadhaarMatch) {
         const rawDigits = aadhaarMatch[1].replace(/\s/g, '');
         // Mask first 8 digits for data minimization compliance
@@ -132,9 +130,7 @@ class OCRProvider {
                           textUpper.includes('GOVT. OF INDIA');
 
     if (panMatch || (isPanKeywords && !aadhaarMatch)) {
-      if (expectedDocType === 'PAN' || expectedDocType === 'UNKNOWN') {
-        detectedDocType = 'PAN';
-      }
+      detectedDocType = 'PAN';
       if (panMatch) {
         addField('documentNumber', panMatch[1], 0.98);
         addField('panNumber', panMatch[1], 0.98);
@@ -146,12 +142,11 @@ class OCRProvider {
     const isPassportKeywords = textUpper.includes('PASSPORT') ||
                                textUpper.includes('REPUBLIC OF INDIA') ||
                                textUpper.includes('PASSEPORT') ||
-                               textUpper.includes('P<IND');
+                               textUpper.includes('P<IND') ||
+                               textUpper.includes('P<');
 
     if (isPassportKeywords || (passportMatch && textUpper.includes('IND'))) {
-      if (expectedDocType === 'PASSPORT' || expectedDocType === 'UNKNOWN') {
-        detectedDocType = 'PASSPORT';
-      }
+      detectedDocType = 'PASSPORT';
       if (passportMatch) {
         addField('documentNumber', passportMatch[1], 0.95);
         addField('passportNumber', passportMatch[1], 0.95);
@@ -165,13 +160,19 @@ class OCRProvider {
                          textUpper.includes('UNION OF INDIA DRIVING');
 
     if (dlMatch || isDlKeywords) {
-      if (expectedDocType === 'DRIVING_LICENSE' || expectedDocType === 'UNKNOWN') {
-        detectedDocType = 'DRIVING_LICENSE';
-      }
+      detectedDocType = 'DRIVING_LICENSE';
       if (dlMatch) {
         addField('documentNumber', dlMatch[1].replace(/[-\s]/g, ''), 0.92);
         addField('drivingLicenceNumber', dlMatch[1].replace(/[-\s]/g, ''), 0.92);
       }
+    }
+
+    // 5. VISA DETECTION & EXTRACTION
+    const isVisaKeywords = textUpper.includes('VISA') ||
+                           textUpper.includes('ENTRY PERMIT') ||
+                           textUpper.includes('REPUBLIC OF INDIA VISA');
+    if (isVisaKeywords && detectedDocType === 'UNKNOWN') {
+      detectedDocType = 'VISA';
     }
 
     // 5. DATE OF BIRTH EXTRACTION

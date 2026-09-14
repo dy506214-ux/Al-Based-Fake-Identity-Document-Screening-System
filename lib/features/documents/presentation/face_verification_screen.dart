@@ -1072,7 +1072,7 @@ class _FaceVerificationScreenState extends ConsumerState<FaceVerificationScreen>
   }
 }
 
-// Dedicated Live Face Camera Dialog with Oval Guide
+// Dedicated Live Face Camera Dialog with Full Top Navbar, Bottom Navbar & Front/Back Switch
 class _LiveFaceCameraDialog extends StatefulWidget {
   final List<CameraDescription> availableCameras;
 
@@ -1084,13 +1084,20 @@ class _LiveFaceCameraDialog extends StatefulWidget {
 
 class _LiveFaceCameraDialogState extends State<_LiveFaceCameraDialog> {
   CameraController? _controller;
+  int _selectedCameraIndex = 0;
   bool _isInit = false;
   bool _isTakingPicture = false;
+  bool _isFlashOn = false;
   String? _error;
 
   @override
   void initState() {
     super.initState();
+    // Default to front camera if available, else first camera
+    final frontIdx = widget.availableCameras.indexWhere(
+      (c) => c.lensDirection == CameraLensDirection.front,
+    );
+    _selectedCameraIndex = frontIdx != -1 ? frontIdx : 0;
     _initCamera();
   }
 
@@ -1104,6 +1111,7 @@ class _LiveFaceCameraDialogState extends State<_LiveFaceCameraDialog> {
     final ctrl = _controller;
     _controller = null;
     _isInit = false;
+    _isFlashOn = false;
     if (ctrl != null) {
       try {
         await ctrl.dispose();
@@ -1116,17 +1124,21 @@ class _LiveFaceCameraDialogState extends State<_LiveFaceCameraDialog> {
     if (!mounted) return;
     setState(() {
       _error = null;
+      _isInit = false;
     });
 
+    if (widget.availableCameras.isEmpty) {
+      setState(() {
+        _error = 'No camera hardware detected on this device.';
+      });
+      return;
+    }
+
     try {
-      // Prioritize front/selfie camera for face verification
-      final frontCamera = widget.availableCameras.firstWhere(
-        (c) => c.lensDirection == CameraLensDirection.front,
-        orElse: () => widget.availableCameras.first,
-      );
+      final selectedCamera = widget.availableCameras[_selectedCameraIndex % widget.availableCameras.length];
 
       final ctrl = CameraController(
-        frontCamera,
+        selectedCamera,
         ResolutionPreset.high,
         enableAudio: false,
         imageFormatGroup: kIsWeb ? null : ImageFormatGroup.jpeg,
@@ -1142,9 +1154,31 @@ class _LiveFaceCameraDialogState extends State<_LiveFaceCameraDialog> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = 'Unable to initialize front camera: ${e.toString().replaceAll("Exception:", "").trim()}';
+        _error = 'Unable to initialize camera: ${e.toString().replaceAll("Exception:", "").trim()}';
       });
     }
+  }
+
+  Future<void> _switchCamera() async {
+    if (widget.availableCameras.length <= 1 || _isTakingPicture) return;
+    setState(() {
+      _selectedCameraIndex = (_selectedCameraIndex + 1) % widget.availableCameras.length;
+    });
+    await _initCamera();
+  }
+
+  Future<void> _toggleFlash() async {
+    final ctrl = _controller;
+    if (ctrl == null || !ctrl.value.isInitialized || _isTakingPicture) return;
+    try {
+      final newMode = _isFlashOn ? FlashMode.off : FlashMode.torch;
+      await ctrl.setFlashMode(newMode);
+      if (mounted) {
+        setState(() {
+          _isFlashOn = !_isFlashOn;
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _capture() async {
@@ -1165,126 +1199,404 @@ class _LiveFaceCameraDialogState extends State<_LiveFaceCameraDialog> {
         _isTakingPicture = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Capture failed: ${e.toString()}')),
+        SnackBar(
+          backgroundColor: const Color(0xFFDC2626),
+          content: Text('Capture failed: ${e.toString()}'),
+        ),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final currentCamera = widget.availableCameras.isNotEmpty
+        ? widget.availableCameras[_selectedCameraIndex % widget.availableCameras.length]
+        : null;
+    final isFrontCamera = currentCamera?.lensDirection == CameraLensDirection.front;
+
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: const Color(0xFF0F172A),
       body: SafeArea(
-        child: Stack(
-          alignment: Alignment.center,
-          fit: StackFit.expand,
+        child: Column(
           children: [
-            // Live Preview or Loading/Error
-            if (_isInit && _controller != null)
-              CameraPreview(_controller!)
-            else if (_error != null)
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.error_outline, color: Colors.white, size: 40),
-                      const SizedBox(height: 12),
-                      Text(
-                        _error!,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.white70),
+            // 1. Fully Working Top Navigation Bar (Header)
+            _buildTopNavbar(context),
+
+            // 2. Security Banner
+            _buildSecurityBanner(),
+
+            // 3. Camera Viewport with Oval Framing & Guides
+            Expanded(
+              child: Stack(
+                alignment: Alignment.center,
+                fit: StackFit.expand,
+                children: [
+                  // Live Camera Stream or Error/Loading State
+                  if (_isInit && _controller != null)
+                    Center(
+                      child: AspectRatio(
+                        aspectRatio: _controller!.value.aspectRatio,
+                        child: CameraPreview(_controller!),
                       ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: _initCamera,
-                        child: const Text('Retry'),
+                    )
+                  else if (_error != null)
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.error_outline_rounded, color: Color(0xFFEF4444), size: 44),
+                            const SizedBox(height: 12),
+                            Text(
+                              _error!,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(color: Colors.white70, fontSize: 13),
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF22C55E),
+                                foregroundColor: Colors.white,
+                              ),
+                              onPressed: _initCamera,
+                              child: const Text('Retry Camera'),
+                            ),
+                          ],
+                        ),
                       ),
-                    ],
+                    )
+                  else
+                    const Center(
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF22C55E)),
+                      ),
+                    ),
+
+                  // Oval Face Framing Guide Custom Painter
+                  CustomPaint(
+                    painter: _FaceOvalGuidePainter(),
+                  ),
+
+                  // Guidance Chip at Top of Camera Area
+                  Positioned(
+                    top: 16,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.65),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.white24, width: 1.0),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Color(0xFF22C55E),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Center your face inside the oval',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // Lens Direction Indicator Badge
+                  if (_isInit && currentCamera != null)
+                    Positioned(
+                      bottom: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1E293B).withValues(alpha: 0.85),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFF334155), width: 1.0),
+                        ),
+                        child: Text(
+                          isFrontCamera ? 'FRONT CAMERA (SELFIE)' : 'BACK CAMERA (REAR)',
+                          style: const TextStyle(
+                            color: Color(0xFF94A3B8),
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+
+            // 4. Bottom Control Bar (Camera Switch, Shutter, Flash)
+            _buildBottomControlsBar(context, isFrontCamera),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Top Navbar Header Bar
+  Widget _buildTopNavbar(BuildContext context) {
+    return Container(
+      color: const Color(0xFF1E281E),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      child: Row(
+        children: [
+          // Back / Close Button
+          Semantics(
+            label: 'Close live camera',
+            button: true,
+            child: InkWell(
+              onTap: () => Navigator.of(context).pop(),
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2C392C),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: const Color(0xFF3F523F),
+                    width: 1.0,
                   ),
                 ),
-              )
-            else
-              const Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF22C55E)),
-                ),
-              ),
-
-            // Oval Face Framing Guide Overlay
-            CustomPaint(
-              painter: _FaceOvalGuidePainter(),
-            ),
-
-            // Top Close Button
-            Positioned(
-              top: 16,
-              left: 16,
-              child: IconButton(
-                style: IconButton.styleFrom(
-                  backgroundColor: Colors.black54,
-                  foregroundColor: Colors.white,
-                ),
-                onPressed: () => Navigator.of(context).pop(),
-                icon: const Icon(Icons.close_rounded),
-              ),
-            ),
-
-            // Guidance Text
-            const Positioned(
-              top: 24,
-              child: Text(
-                'Center your face inside the oval',
-                style: TextStyle(
+                child: const Icon(
+                  Icons.arrow_back_rounded,
                   color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  shadows: [Shadow(color: Colors.black, blurRadius: 4)],
+                  size: 20,
                 ),
               ),
             ),
+          ),
+          const SizedBox(width: 14),
 
-            // Bottom Shutter Button
-            Positioned(
-              bottom: 28,
-              child: InkWell(
-                onTap: _isTakingPicture ? null : _capture,
-                borderRadius: BorderRadius.circular(40),
+          // Title & Subtitle
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'LIVE FACE CAPTURE',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+                SizedBox(height: 2),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    "Step 4 of 8 · Align face inside oval",
+                    style: TextStyle(
+                      color: Color(0xFFB0C4B1),
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Security Status Banner
+  Widget _buildSecurityBanner() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 16),
+      color: const Color(0xFFDCEFE2),
+      child: const Row(
+        children: [
+          Icon(
+            Icons.lock_outline_rounded,
+            size: 13,
+            color: Color(0xFF166534),
+          ),
+          SizedBox(width: 6),
+          Expanded(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'BIOMETRIC DATA · SECURE LIVE CAPTURE',
+                style: TextStyle(
+                  color: Color(0xFF166534),
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Bottom Controls Bar with Front/Back Switch, Shutter, Flash
+  Widget _buildBottomControlsBar(BuildContext context, bool isFrontCamera) {
+    final hasMultipleCameras = widget.availableCameras.length > 1;
+
+    return Container(
+      width: double.infinity,
+      color: const Color(0xFF1E281E),
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // 1. Camera Switch Button (Toggle Front <-> Back Camera)
+          Semantics(
+            label: 'Switch camera between front and back',
+            button: true,
+            child: InkWell(
+              onTap: hasMultipleCameras && !_isTakingPicture ? _switchCamera : null,
+              borderRadius: BorderRadius.circular(30),
+              child: Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFF2C392C),
+                  border: Border.all(
+                    color: hasMultipleCameras ? const Color(0xFF4B634B) : Colors.transparent,
+                    width: 1.5,
+                  ),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.flip_camera_ios_rounded,
+                      color: hasMultipleCameras ? Colors.white : Colors.white38,
+                      size: 24,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      isFrontCamera ? 'Front' : 'Back',
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                        color: hasMultipleCameras ? const Color(0xFFB0C4B1) : Colors.white38,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // 2. Large Primary Shutter / Capture Button
+          Semantics(
+            label: 'Capture face photo',
+            button: true,
+            child: InkWell(
+              onTap: _isTakingPicture || !_isInit ? null : _capture,
+              borderRadius: BorderRadius.circular(44),
+              child: Container(
+                width: 76,
+                height: 76,
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: const Color(0xFF22C55E),
+                    width: 4.0,
+                  ),
+                ),
                 child: Container(
-                  width: 72,
-                  height: 72,
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     shape: BoxShape.circle,
                     color: Colors.white,
-                    border: Border.all(
-                      color: const Color(0xFF22C55E),
-                      width: 4,
-                    ),
                   ),
                   child: Center(
                     child: _isTakingPicture
                         ? const SizedBox(
-                            width: 28,
-                            height: 28,
+                            width: 30,
+                            height: 30,
                             child: CircularProgressIndicator(
-                              strokeWidth: 3,
+                              strokeWidth: 3.5,
                               valueColor: AlwaysStoppedAnimation<Color>(
-                                Color(0xFF22C55E),
+                                Color(0xFF16A34A),
                               ),
                             ),
                           )
                         : const Icon(
                             Icons.camera_alt_rounded,
-                            size: 30,
-                            color: Color(0xFF0F172A),
+                            size: 32,
+                            color: Color(0xFF1E281E),
                           ),
                   ),
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+
+          // 3. Torch / Flash Toggle Button
+          Semantics(
+            label: 'Toggle flash or torch',
+            button: true,
+            child: InkWell(
+              onTap: _isInit && !_isTakingPicture ? _toggleFlash : null,
+              borderRadius: BorderRadius.circular(30),
+              child: Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _isFlashOn ? const Color(0xFFF59E0B).withValues(alpha: 0.25) : const Color(0xFF2C392C),
+                  border: Border.all(
+                    color: _isFlashOn ? const Color(0xFFF59E0B) : const Color(0xFF4B634B),
+                    width: 1.5,
+                  ),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      _isFlashOn ? Icons.flash_on_rounded : Icons.flash_off_rounded,
+                      color: _isFlashOn ? const Color(0xFFF59E0B) : Colors.white70,
+                      size: 22,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _isFlashOn ? 'On' : 'Flash',
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                        color: _isFlashOn ? const Color(0xFFF59E0B) : const Color(0xFFB0C4B1),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1294,10 +1606,13 @@ class _LiveFaceCameraDialogState extends State<_LiveFaceCameraDialog> {
 class _FaceOvalGuidePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
+    final ovalWidth = (size.width * 0.70).clamp(200.0, 320.0);
+    final ovalHeight = (size.height * 0.52).clamp(260.0, 420.0);
+
     final ovalRect = Rect.fromCenter(
-      center: Offset(size.width / 2, size.height * 0.45),
-      width: size.width * 0.65,
-      height: size.height * 0.46,
+      center: Offset(size.width / 2, size.height * 0.46),
+      width: ovalWidth,
+      height: ovalHeight,
     );
 
     final backgroundPath = Path()
@@ -1307,14 +1622,14 @@ class _FaceOvalGuidePainter extends CustomPainter {
         Path.combine(PathOperation.difference, backgroundPath, ovalPath);
 
     final overlayPaint = Paint()
-      ..color = Colors.black.withValues(alpha: 0.55)
+      ..color = Colors.black.withValues(alpha: 0.58)
       ..style = PaintingStyle.fill;
     canvas.drawPath(overlayPath, overlayPaint);
 
     final borderPaint = Paint()
       ..color = const Color(0xFF22C55E)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.5;
+      ..strokeWidth = 3.0;
     canvas.drawOval(ovalRect, borderPaint);
   }
 

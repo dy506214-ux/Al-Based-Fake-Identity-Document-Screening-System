@@ -1312,9 +1312,9 @@ class _LiveFaceCameraDialogState extends State<_LiveFaceCameraDialog> {
                       ),
                     ),
 
-                  // Oval Face Framing Guide Custom Painter
+                  // Professional Rectangular Face Framing Guide Custom Painter
                   CustomPaint(
-                    painter: _FaceOvalGuidePainter(),
+                    painter: _FaceRectangularGuidePainter(),
                   ),
 
                   // Guidance Chip at Top of Camera Area
@@ -1340,12 +1340,12 @@ class _LiveFaceCameraDialogState extends State<_LiveFaceCameraDialog> {
                           ),
                           const SizedBox(width: 8),
                           const Text(
-                            'Center your face inside the oval',
+                            'ALIGN FACE INSIDE FRAME',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.3,
+                              fontSize: 12.0,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.5,
                             ),
                           ),
                         ],
@@ -1446,7 +1446,7 @@ class _LiveFaceCameraDialogState extends State<_LiveFaceCameraDialog> {
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    "Step 4 of 8 · Align face inside oval",
+                    "Step 4 of 8 · Align face inside frame",
                     style: TextStyle(
                       color: Color(0xFFB0C4B1),
                       fontSize: 11.5,
@@ -1641,37 +1641,111 @@ class _LiveFaceCameraDialogState extends State<_LiveFaceCameraDialog> {
   }
 }
 
-// CustomPainter for Biometric Face Oval Guide
-class _FaceOvalGuidePainter extends CustomPainter {
+// CustomPainter for Professional Biometric Face Rectangular Guide Frame
+class _FaceRectangularGuidePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final ovalWidth = (size.width * 0.70).clamp(200.0, 320.0);
-    final ovalHeight = (size.height * 0.52).clamp(260.0, 420.0);
+    // 1. Responsive rectangular dimensions (84–90% width, 60–68% height)
+    final frameWidth = (size.width * 0.88).clamp(240.0, 480.0);
+    final frameHeight = (size.height * 0.64).clamp(280.0, 560.0);
+    final center = Offset(size.width / 2, size.height * 0.47);
 
-    final ovalRect = Rect.fromCenter(
-      center: Offset(size.width / 2, size.height * 0.46),
-      width: ovalWidth,
-      height: ovalHeight,
+    final frameRect = Rect.fromCenter(
+      center: center,
+      width: frameWidth,
+      height: frameHeight,
     );
+    const cornerRadius = 16.0;
+    final rrect = RRect.fromRectAndRadius(frameRect, const Radius.circular(cornerRadius));
 
+    // 2. Dark translucent background overlay outside the capture rectangle
     final backgroundPath = Path()
       ..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
-    final ovalPath = Path()..addOval(ovalRect);
+    final rrectPath = Path()..addRRect(rrect);
     final overlayPath =
-        Path.combine(PathOperation.difference, backgroundPath, ovalPath);
+        Path.combine(PathOperation.difference, backgroundPath, rrectPath);
 
     final overlayPaint = Paint()
-      ..color = Colors.black.withValues(alpha: 0.58)
+      ..color = Colors.black.withValues(alpha: 0.52)
       ..style = PaintingStyle.fill;
     canvas.drawPath(overlayPath, overlayPaint);
 
+    // 3. Subtle outer glow for rectangle
+    final glowPaint = Paint()
+      ..color = const Color(0xFF22C55E).withValues(alpha: 0.20)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.0);
+    canvas.drawRRect(rrect, glowPaint);
+
+    // 4. Clean thin green rectangular border
     final borderPaint = Paint()
+      ..color = const Color(0xFF22C55E).withValues(alpha: 0.45)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2;
+    canvas.drawRRect(rrect, borderPaint);
+
+    // 5. Four prominent L-shaped biometric corner indicators
+    final cornerLen = (frameWidth * 0.12).clamp(26.0, 36.0);
+    final cornersPath = Path();
+
+    // Top-Left Corner
+    cornersPath.moveTo(frameRect.left, frameRect.top + cornerLen);
+    cornersPath.lineTo(frameRect.left, frameRect.top + cornerRadius);
+    cornersPath.arcToPoint(
+      Offset(frameRect.left + cornerRadius, frameRect.top),
+      radius: const Radius.circular(cornerRadius),
+    );
+    cornersPath.lineTo(frameRect.left + cornerLen, frameRect.top);
+
+    // Top-Right Corner
+    cornersPath.moveTo(frameRect.right - cornerLen, frameRect.top);
+    cornersPath.lineTo(frameRect.right - cornerRadius, frameRect.top);
+    cornersPath.arcToPoint(
+      Offset(frameRect.right, frameRect.top + cornerRadius),
+      radius: const Radius.circular(cornerRadius),
+    );
+    cornersPath.lineTo(frameRect.right, frameRect.top + cornerLen);
+
+    // Bottom-Right Corner
+    cornersPath.moveTo(frameRect.right, frameRect.bottom - cornerLen);
+    cornersPath.lineTo(frameRect.right, frameRect.bottom - cornerRadius);
+    cornersPath.arcToPoint(
+      Offset(frameRect.right - cornerRadius, frameRect.bottom),
+      radius: const Radius.circular(cornerRadius),
+    );
+    cornersPath.lineTo(frameRect.right - cornerLen, frameRect.bottom);
+
+    // Bottom-Left Corner
+    cornersPath.moveTo(frameRect.left + cornerLen, frameRect.bottom);
+    cornersPath.lineTo(frameRect.left + cornerRadius, frameRect.bottom);
+    cornersPath.arcToPoint(
+      Offset(frameRect.left, frameRect.bottom - cornerRadius),
+      radius: const Radius.circular(cornerRadius),
+    );
+    cornersPath.lineTo(frameRect.left, frameRect.bottom - cornerLen);
+
+    // Subtle glow on corner indicators
+    final cornerGlowPaint = Paint()
+      ..color = const Color(0xFF22C55E).withValues(alpha: 0.40)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 5.5
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5);
+    canvas.drawPath(cornersPath, cornerGlowPaint);
+
+    // Crisp green corner indicators
+    final cornerPaint = Paint()
       ..color = const Color(0xFF22C55E)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.0;
-    canvas.drawOval(ovalRect, borderPaint);
+      ..strokeWidth = 3.5
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    canvas.drawPath(cornersPath, cornerPaint);
   }
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
+

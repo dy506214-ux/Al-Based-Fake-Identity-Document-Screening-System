@@ -1,11 +1,11 @@
 {
-    "name": "document_screening",
-    "short_name": "document_screening",
+    "name": "DocIScan — AI Identity Screening",
+    "short_name": "DocIScan",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#0F172A",
+    "theme_color": "#1E281E",
+    "description": "AI-Based Fake Identity & Document Screening System",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

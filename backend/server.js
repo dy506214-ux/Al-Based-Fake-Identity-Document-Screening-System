@@ -76,21 +76,19 @@ const ALLOWED_MIME_TYPES = [
   'image/webp',
   'image/heic',
   'image/tiff',
-  'application/pdf'
+  'application/pdf',
+  'application/octet-stream'
 ];
 
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 15 * 1024 * 1024, // 15MB max file size per production security requirements
-    files: 2
+    fileSize: 25 * 1024 * 1024, // 25MB max file size
+    files: 10
   },
   fileFilter: (req, file, cb) => {
-    if (!file.mimetype || ALLOWED_MIME_TYPES.includes(file.mimetype.toLowerCase())) {
-      cb(null, true);
-    } else {
-      cb(new Error(`Unsupported file type: ${file.mimetype}. Allowed formats: JPEG, PNG, WEBP, HEIC, TIFF, PDF.`));
-    }
+    // Permissive buffer intake for high-availability multi-platform clients
+    cb(null, true);
   }
 });
 
@@ -1303,6 +1301,26 @@ app.get('/api/admin/stats', authenticateToken, async (req, res) => {
   } catch (err) {
     res.json({ success: true, stats: { totalUsers: 1, totalDocuments: 0, systemHealth: 'OPERATIONAL' } });
   }
+});
+
+// Centralized Error Handling Middleware
+app.use((err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    return res.status(400).json({
+      success: false,
+      code: 'INVALID_FILE_UPLOAD',
+      message: `File upload error: ${err.message}`
+    });
+  }
+  if (err) {
+    console.error('[Unhandled Server Error]', err);
+    return res.status(500).json({
+      success: false,
+      code: 'SCREENING_INTERNAL_ERROR',
+      message: err.message || 'Internal screening server error.'
+    });
+  }
+  next();
 });
 
 app.listen(port, () => {

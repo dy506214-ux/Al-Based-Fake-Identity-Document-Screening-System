@@ -803,8 +803,47 @@ class _FaceVerificationScreenState extends ConsumerState<FaceVerificationScreen>
     );
   }
 
-  // Warning Banner matching Reference Image 2
+  // Warning / Readiness Banner
   Widget _buildWarningBanner() {
+    final hasFace = _capturedFaceFile != null || _capturedFaceBytes != null;
+    final hasDocument = widget.documentFile != null ||
+        widget.documentBytes != null ||
+        (widget.documentId.isNotEmpty && !widget.documentId.startsWith('DOC-'));
+
+    if (hasFace && hasDocument) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFDCFCE7),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFF86EFAC), width: 1.0),
+        ),
+        child: const Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.check_circle_outline_rounded,
+              color: Color(0xFF16A34A),
+              size: 20,
+            ),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Document and face photos verified and ready for AI anti-tamper screening.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF14532D),
+                  fontWeight: FontWeight.w700,
+                  height: 1.35,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),

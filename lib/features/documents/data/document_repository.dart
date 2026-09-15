@@ -156,7 +156,6 @@ class DocumentRepository {
       if (fBytes != null) {
         final faceName = faceFile != null && faceFile.name.isNotEmpty ? faceFile.name : 'face.jpg';
         map['face'] = MultipartFile.fromBytes(fBytes, filename: faceName);
-        map['selfie'] = MultipartFile.fromBytes(fBytes, filename: faceName);
       }
     }
 

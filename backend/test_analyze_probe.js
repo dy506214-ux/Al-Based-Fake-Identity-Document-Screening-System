@@ -19,34 +19,28 @@ async function testAnalyze() {
       'base64'
     );
 
-    console.log('\n--- Test 1: Single file "document" with selectedDocumentType ---');
-    const form1 = new FormData();
-    form1.append('document', new Blob([dummyPng], { type: 'image/png' }), 'doc.png');
-    form1.append('selectedDocumentType', 'PASSPORT');
+    const docTypes = ['AADHAAR', 'PAN', 'PASSPORT', 'VISA', 'DRIVING_LICENSE', 'OTHER_NATIONAL_ID', 'Aadhaar Card', 'Passport'];
 
-    const res1 = await fetch(`${BASE_URL}/api/screening/analyze`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      body: form1,
-    });
-    console.log('Test 1 Status:', res1.status, 'Response:', await res1.text());
+    for (const dt of docTypes) {
+      const form = new FormData();
+      form.append('document', new Blob([dummyPng], { type: 'image/png' }), 'doc.png');
+      form.append('face', new Blob([dummyPng], { type: 'image/png' }), 'face.png');
+      form.append('selectedDocumentType', dt);
 
-    console.log('\n--- Test 2: Two files "document" and "face" with selectedDocumentType ---');
-    const form2 = new FormData();
-    form2.append('document', new Blob([dummyPng], { type: 'image/png' }), 'doc.png');
-    form2.append('face', new Blob([dummyPng], { type: 'image/png' }), 'face.png');
-    form2.append('selectedDocumentType', 'PASSPORT');
+      const res = await fetch(`${BASE_URL}/api/screening/analyze`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: form,
+      });
 
-    const res2 = await fetch(`${BASE_URL}/api/screening/analyze`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      body: form2,
-    });
-    console.log('Test 2 Status:', res2.status, 'Response:', await res2.text());
+      const bodyText = await res.text();
+      let parsed = null;
+      try { parsed = JSON.parse(bodyText); } catch (_) {}
+
+      console.log(`DocType: "${dt}" -> HTTP ${res.status}, success=${parsed?.success}, status=${parsed?.status}, risk=${parsed?.riskScore}`);
+    }
 
   } catch (globalErr) {
     console.error('Global error:', globalErr);

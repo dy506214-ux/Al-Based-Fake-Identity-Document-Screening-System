@@ -594,45 +594,50 @@ class _FaceVerificationScreenState extends ConsumerState<FaceVerificationScreen>
   Widget _buildHeader(BuildContext context) {
     return Container(
       color: const Color(0xFF1E281E),
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      padding: const EdgeInsets.fromLTRB(12, 10, 16, 10),
       child: Row(
         children: [
           // Back Button
           Semantics(
             label: 'Back to document preview',
             button: true,
-            child: InkWell(
-              onTap: () {
-                if (context.canPop()) {
-                  context.pop();
-                } else {
-                  context.go('/preview', extra: {
-                    'file': widget.documentFile,
-                    'docType': widget.selectedDocType,
-                  });
-                }
-              },
-              borderRadius: BorderRadius.circular(10),
-              child: Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF2C392C),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: const Color(0xFF3F523F),
-                    width: 1.0,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  if (context.canPop()) {
+                    context.pop();
+                  } else {
+                    context.go('/preview', extra: {
+                      'file': widget.documentFile,
+                      'bytes': widget.documentBytes,
+                      'docType': widget.selectedDocType,
+                    });
+                  }
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  width: 46,
+                  height: 46,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2C392C),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: const Color(0xFF3F523F),
+                      width: 1.0,
+                    ),
                   ),
-                ),
-                child: const Icon(
-                  Icons.arrow_back_rounded,
-                  color: Colors.white,
-                  size: 20,
+                  child: const Icon(
+                    Icons.arrow_back_rounded,
+                    color: Colors.white,
+                    size: 22,
+                  ),
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 12),
 
           // Title & Subtitle
           const Expanded(
@@ -1128,6 +1133,7 @@ class _LiveFaceCameraDialogState extends State<_LiveFaceCameraDialog> {
   bool _isInit = false;
   bool _isTakingPicture = false;
   bool _isFlashOn = false;
+  bool _isNavigatingBack = false;
   String? _error;
 
   Rect _currentFrameRect = Rect.zero;
@@ -1162,15 +1168,41 @@ class _LiveFaceCameraDialogState extends State<_LiveFaceCameraDialog> {
     }
   }
 
+  /// One-Tap Centralized Safe Back Navigation & Camera Teardown
+  Future<void> _handleBack() async {
+    if (_isNavigatingBack) return;
+    _isNavigatingBack = true;
+
+    // 1. Immediately detach controller to invalidate late in-flight callbacks
+    final ctrlToDispose = _controller;
+    _controller = null;
+    _isInit = false;
+
+    // 2. Immediate navigation pop on the FIRST tap
+    if (mounted && Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
+
+    // 3. Asynchronously dispose camera hardware in the background
+    if (ctrlToDispose != null) {
+      try {
+        await ctrlToDispose.dispose();
+      } catch (e) {
+        debugPrint('Non-critical camera dispose warning on back: $e');
+      }
+    }
+  }
+
   Future<void> _initCamera() async {
     await _disposeCamera();
-    if (!mounted) return;
+    if (!mounted || _isNavigatingBack) return;
     setState(() {
       _error = null;
       _isInit = false;
     });
 
     if (widget.availableCameras.isEmpty) {
+      if (!mounted || _isNavigatingBack) return;
       setState(() {
         _error = 'No camera hardware detected on this device.';
       });
@@ -1190,12 +1222,19 @@ class _LiveFaceCameraDialogState extends State<_LiveFaceCameraDialog> {
       _controller = ctrl;
       await ctrl.initialize();
 
-      if (!mounted) return;
+      // Guard against race if user tapped back during initialize()
+      if (!mounted || _isNavigatingBack || _controller != ctrl) {
+        try {
+          await ctrl.dispose();
+        } catch (_) {}
+        return;
+      }
+
       setState(() {
         _isInit = true;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || _isNavigatingBack) return;
       setState(() {
         _error = 'Unable to initialize camera: ${e.toString().replaceAll("Exception:", "").trim()}';
       });
@@ -1203,7 +1242,7 @@ class _LiveFaceCameraDialogState extends State<_LiveFaceCameraDialog> {
   }
 
   Future<void> _switchCamera() async {
-    if (widget.availableCameras.length <= 1 || _isTakingPicture) return;
+    if (widget.availableCameras.length <= 1 || _isTakingPicture || _isNavigatingBack) return;
     setState(() {
       _selectedCameraIndex = (_selectedCameraIndex + 1) % widget.availableCameras.length;
     });
@@ -1212,11 +1251,11 @@ class _LiveFaceCameraDialogState extends State<_LiveFaceCameraDialog> {
 
   Future<void> _toggleFlash() async {
     final ctrl = _controller;
-    if (ctrl == null || !ctrl.value.isInitialized || _isTakingPicture) return;
+    if (ctrl == null || !ctrl.value.isInitialized || _isTakingPicture || _isNavigatingBack) return;
     try {
       final newMode = _isFlashOn ? FlashMode.off : FlashMode.torch;
       await ctrl.setFlashMode(newMode);
-      if (mounted) {
+      if (mounted && !_isNavigatingBack) {
         setState(() {
           _isFlashOn = !_isFlashOn;
         });
@@ -1226,7 +1265,7 @@ class _LiveFaceCameraDialogState extends State<_LiveFaceCameraDialog> {
 
   Future<void> _capture() async {
     final ctrl = _controller;
-    if (ctrl == null || !ctrl.value.isInitialized || _isTakingPicture) return;
+    if (ctrl == null || !ctrl.value.isInitialized || _isTakingPicture || _isNavigatingBack) return;
 
     setState(() {
       _isTakingPicture = true;
@@ -1235,6 +1274,8 @@ class _LiveFaceCameraDialogState extends State<_LiveFaceCameraDialog> {
     try {
       final file = await ctrl.takePicture();
       final rawBytes = await file.readAsBytes();
+
+      if (_isNavigatingBack || !mounted) return;
 
       final currentCamera = widget.availableCameras.isNotEmpty
           ? widget.availableCameras[_selectedCameraIndex % widget.availableCameras.length]
@@ -1266,7 +1307,7 @@ class _LiveFaceCameraDialogState extends State<_LiveFaceCameraDialog> {
         debugPrint('Face frame crop warning (using raw capture): $cropErr');
       }
 
-      if (!mounted) return;
+      if (!mounted || _isNavigatingBack) return;
       final processedFile = XFile.fromData(
         finalBytes,
         name: 'live_face_capture.jpg',
@@ -1274,7 +1315,7 @@ class _LiveFaceCameraDialogState extends State<_LiveFaceCameraDialog> {
       );
       Navigator.of(context).pop(processedFile);
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || _isNavigatingBack) return;
       setState(() {
         _isTakingPicture = false;
       });
@@ -1364,171 +1405,178 @@ class _LiveFaceCameraDialogState extends State<_LiveFaceCameraDialog> {
         : null;
     final isFrontCamera = currentCamera?.lensDirection == CameraLensDirection.front;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // 1. Fully Working Top Navigation Bar (Header)
-            _buildTopNavbar(context),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        _handleBack();
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFF0F172A),
+        body: SafeArea(
+          child: Column(
+            children: [
+              // 1. Fully Working Top Navigation Bar (Header)
+              _buildTopNavbar(context),
 
-            // 2. Security Banner
-            _buildSecurityBanner(),
+              // 2. Security Banner
+              _buildSecurityBanner(),
 
-            // 3. Maximized Camera Viewport with Exact Responsive Framing & Guides
-            Expanded(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final double viewportW = constraints.maxWidth;
-                  final double viewportH = constraints.maxHeight;
+              // 3. Maximized Camera Viewport with Exact Responsive Framing & Guides
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final double viewportW = constraints.maxWidth;
+                    final double viewportH = constraints.maxHeight;
 
-                  // Calculate stream scaling to fill viewport with BoxFit.cover without distortion
-                  final double rawAspect = _controller?.value.aspectRatio ?? (4 / 3);
-                  final bool isLandscapeSensor = rawAspect > 1.0;
-                  final double streamVisualAspect = isLandscapeSensor ? (1.0 / rawAspect) : rawAspect;
+                    // Calculate stream scaling to fill viewport with BoxFit.cover without distortion
+                    final double rawAspect = _controller?.value.aspectRatio ?? (4 / 3);
+                    final bool isLandscapeSensor = rawAspect > 1.0;
+                    final double streamVisualAspect = isLandscapeSensor ? (1.0 / rawAspect) : rawAspect;
 
-                  final double containerAspect = viewportW / (viewportH > 0 ? viewportH : 1.0);
-                  final double scale = containerAspect > streamVisualAspect
-                      ? (containerAspect / streamVisualAspect)
-                      : (streamVisualAspect / containerAspect);
+                    final double containerAspect = viewportW / (viewportH > 0 ? viewportH : 1.0);
+                    final double scale = containerAspect > streamVisualAspect
+                        ? (containerAspect / streamVisualAspect)
+                        : (streamVisualAspect / containerAspect);
 
-                  // Responsive portrait biometric face frame dimensions
-                  final double frameW = (viewportW * 0.82).clamp(240.0, 420.0);
-                  final double frameH = (frameW * 1.25).clamp(280.0, viewportH * 0.74);
-                  final Rect frameRect = Rect.fromCenter(
-                    center: Offset(viewportW / 2, viewportH * 0.46),
-                    width: frameW,
-                    height: frameH,
-                  );
+                    // Responsive portrait biometric face frame dimensions
+                    final double frameW = (viewportW * 0.82).clamp(240.0, 420.0);
+                    final double frameH = (frameW * 1.25).clamp(280.0, viewportH * 0.74);
+                    final Rect frameRect = Rect.fromCenter(
+                      center: Offset(viewportW / 2, viewportH * 0.46),
+                      width: frameW,
+                      height: frameH,
+                    );
 
-                  // Update references for capture mapping
-                  _currentFrameRect = frameRect;
-                  _currentViewportSize = Size(viewportW, viewportH);
+                    // Update references for capture mapping
+                    _currentFrameRect = frameRect;
+                    _currentViewportSize = Size(viewportW, viewportH);
 
-                  return Stack(
-                    alignment: Alignment.center,
-                    fit: StackFit.expand,
-                    children: [
-                      // 1. Live Camera Stream - Scaled seamlessly to fill camera area without letterbox
-                      if (_isInit && _controller != null)
-                        ClipRect(
-                          child: Transform.scale(
-                            scale: scale,
-                            alignment: Alignment.center,
-                            child: Center(
-                              child: AspectRatio(
-                                aspectRatio: isLandscapeSensor ? (1.0 / rawAspect) : rawAspect,
-                                child: CameraPreview(_controller!),
+                    return Stack(
+                      alignment: Alignment.center,
+                      fit: StackFit.expand,
+                      children: [
+                        // 1. Live Camera Stream - Scaled seamlessly to fill camera area without letterbox
+                        if (_isInit && _controller != null)
+                          ClipRect(
+                            child: Transform.scale(
+                              scale: scale,
+                              alignment: Alignment.center,
+                              child: Center(
+                                child: AspectRatio(
+                                  aspectRatio: isLandscapeSensor ? (1.0 / rawAspect) : rawAspect,
+                                  child: CameraPreview(_controller!),
+                                ),
                               ),
                             ),
+                          )
+                        else if (_error != null)
+                          Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(24),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.error_outline_rounded, color: Color(0xFFEF4444), size: 44),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    _error!,
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(color: Colors.white70, fontSize: 13),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF22C55E),
+                                      foregroundColor: Colors.white,
+                                    ),
+                                    onPressed: _initCamera,
+                                    child: const Text('Retry Camera'),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                        else
+                          const Center(
+                            child: CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF22C55E)),
+                            ),
                           ),
-                        )
-                      else if (_error != null)
-                        Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(24),
-                            child: Column(
+
+                        // 2. Professional Rectangular Face Framing Guide Custom Painter
+                        CustomPaint(
+                          painter: _FaceRectangularGuidePainter(frameRect: frameRect),
+                        ),
+
+                        // 3. Guidance Chip at Top of Camera Area
+                        Positioned(
+                          top: 16,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.65),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: Colors.white24, width: 1.0),
+                            ),
+                            child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.error_outline_rounded, color: Color(0xFFEF4444), size: 44),
-                                const SizedBox(height: 12),
-                                Text(
-                                  _error!,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(color: Colors.white70, fontSize: 13),
-                                ),
-                                const SizedBox(height: 16),
-                                ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF22C55E),
-                                    foregroundColor: Colors.white,
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: const BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Color(0xFF22C55E),
                                   ),
-                                  onPressed: _initCamera,
-                                  child: const Text('Retry Camera'),
+                                ),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  'ALIGN FACE INSIDE FRAME',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12.0,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 0.5,
+                                  ),
                                 ),
                               ],
                             ),
                           ),
-                        )
-                      else
-                        const Center(
-                          child: CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF22C55E)),
-                          ),
                         ),
 
-                      // 2. Professional Rectangular Face Framing Guide Custom Painter
-                      CustomPaint(
-                        painter: _FaceRectangularGuidePainter(frameRect: frameRect),
-                      ),
-
-                      // 3. Guidance Chip at Top of Camera Area
-                      Positioned(
-                        top: 16,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.65),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: Colors.white24, width: 1.0),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 8,
-                                height: 8,
-                                decoration: const BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Color(0xFF22C55E),
-                                ),
+                        // 4. Lens Direction Indicator Badge
+                        if (_isInit && currentCamera != null)
+                          Positioned(
+                            bottom: 12,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF1E293B).withValues(alpha: 0.85),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: const Color(0xFF334155), width: 1.0),
                               ),
-                              const SizedBox(width: 8),
-                              const Text(
-                                'ALIGN FACE INSIDE FRAME',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12.0,
+                              child: Text(
+                                isFrontCamera ? 'FRONT CAMERA (SELFIE)' : 'BACK CAMERA (REAR)',
+                                style: const TextStyle(
+                                  color: Color(0xFF94A3B8),
+                                  fontSize: 10.5,
                                   fontWeight: FontWeight.w800,
                                   letterSpacing: 0.5,
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      // 4. Lens Direction Indicator Badge
-                      if (_isInit && currentCamera != null)
-                        Positioned(
-                          bottom: 12,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF1E293B).withValues(alpha: 0.85),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: const Color(0xFF334155), width: 1.0),
-                            ),
-                            child: Text(
-                              isFrontCamera ? 'FRONT CAMERA (SELFIE)' : 'BACK CAMERA (REAR)',
-                              style: const TextStyle(
-                                color: Color(0xFF94A3B8),
-                                fontSize: 10.5,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 0.5,
-                              ),
                             ),
                           ),
-                        ),
-                    ],
-                  );
-                },
+                      ],
+                    );
+                  },
+                ),
               ),
-            ),
 
-            // 4. Bottom Control Bar (Camera Switch, Shutter, Flash)
-            _buildBottomControlsBar(context, isFrontCamera),
-          ],
+              // 4. Bottom Control Bar (Camera Switch, Shutter, Flash)
+              _buildBottomControlsBar(context, isFrontCamera),
+            ],
+          ),
         ),
       ),
     );
@@ -1538,36 +1586,40 @@ class _LiveFaceCameraDialogState extends State<_LiveFaceCameraDialog> {
   Widget _buildTopNavbar(BuildContext context) {
     return Container(
       color: const Color(0xFF1E281E),
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      padding: const EdgeInsets.fromLTRB(12, 10, 16, 10),
       child: Row(
         children: [
-          // Back / Close Button
+          // Back / Close Button with large touch target & immediate tap response
           Semantics(
             label: 'Close live camera',
             button: true,
-            child: InkWell(
-              onTap: () => Navigator.of(context).pop(),
-              borderRadius: BorderRadius.circular(10),
-              child: Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF2C392C),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: const Color(0xFF3F523F),
-                    width: 1.0,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: _handleBack,
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  width: 46,
+                  height: 46,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2C392C),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: const Color(0xFF3F523F),
+                      width: 1.0,
+                    ),
                   ),
-                ),
-                child: const Icon(
-                  Icons.arrow_back_rounded,
-                  color: Colors.white,
-                  size: 20,
+                  child: const Icon(
+                    Icons.arrow_back_rounded,
+                    color: Colors.white,
+                    size: 22,
+                  ),
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 12),
 
           // Title & Subtitle
           const Expanded(

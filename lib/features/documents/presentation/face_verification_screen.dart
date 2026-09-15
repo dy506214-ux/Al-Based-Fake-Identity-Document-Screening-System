@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:dio/dio.dart';
 import '../../../core/network/api_exceptions.dart';
@@ -15,6 +16,50 @@ import '../../history/data/history_repository.dart';
 import '../../history/presentation/history_screen.dart';
 import '../data/document_quality_service.dart';
 import '../data/document_repository.dart';
+
+/// Safely calculate responsive biometric portrait framing guide
+Rect _calculateResponsiveFaceFrame(double viewportW, double viewportH) {
+  if (viewportW <= 0 || viewportH <= 0) {
+    return Rect.zero;
+  }
+
+  // Portrait biometric framing aspect ratio (width : height is ~ 1 : 1.25)
+  const double targetAspectRatio = 1.25;
+
+  // Compute maximum frame dimensions respecting viewport padding
+  final double maxW = viewportW * 0.82;
+  final double maxH = viewportH * 0.72;
+
+  double frameW = maxW;
+  double frameH = frameW * targetAspectRatio;
+
+  if (frameH > maxH && maxH > 0) {
+    frameH = maxH;
+    frameW = frameH / targetAspectRatio;
+  }
+
+  // Cap maximum frame size for tablets and desktop screens
+  if (frameW > 380.0) {
+    frameW = 380.0;
+    frameH = frameW * targetAspectRatio;
+  }
+
+  // Ensure positive non-zero minimum dimensions bounded by viewport
+  final double minW = math.min(60.0, viewportW * 0.90);
+  final double minH = math.min(75.0, viewportH * 0.90);
+  if (frameW < minW) frameW = minW;
+  if (frameH < minH) frameH = minH;
+
+  // Center horizontally, positioned at 46% of viewport height
+  final double centerX = viewportW / 2.0;
+  final double centerY = viewportH * 0.46;
+
+  return Rect.fromCenter(
+    center: Offset(centerX, centerY),
+    width: frameW,
+    height: frameH,
+  );
+}
 
 class FaceVerificationScreen extends ConsumerStatefulWidget {
   final String documentId;
@@ -1287,13 +1332,9 @@ class _LiveFaceCameraDialogState extends State<_LiveFaceCameraDialog> {
       try {
         final double vpW = _currentViewportSize.width > 0 ? _currentViewportSize.width : 390.0;
         final double vpH = _currentViewportSize.height > 0 ? _currentViewportSize.height : 580.0;
-        final Rect frame = _currentFrameRect != Rect.zero
+        final Rect frame = (_currentFrameRect != Rect.zero && _currentFrameRect.width > 0 && _currentFrameRect.height > 0)
             ? _currentFrameRect
-            : Rect.fromCenter(
-                center: Offset(vpW / 2, vpH * 0.46),
-                width: (vpW * 0.82).clamp(240.0, 420.0),
-                height: ((vpW * 0.82) * 1.25).clamp(280.0, vpH * 0.74),
-              );
+            : _calculateResponsiveFaceFrame(vpW, vpH);
 
         finalBytes = await _cropImageToFrame(
           rawBytes: rawBytes,
@@ -1344,6 +1385,10 @@ class _LiveFaceCameraDialogState extends State<_LiveFaceCameraDialog> {
     final double imgW = image.width.toDouble();
     final double imgH = image.height.toDouble();
 
+    if (imgW <= 0 || imgH <= 0 || viewportW <= 0 || viewportH <= 0) {
+      return rawBytes;
+    }
+
     final bool sensorIsLandscape = cameraAspect > 1.0;
     final double streamVisualAspect = sensorIsLandscape ? (1.0 / cameraAspect) : cameraAspect;
 
@@ -1358,20 +1403,17 @@ class _LiveFaceCameraDialogState extends State<_LiveFaceCameraDialog> {
     final double offsetX = (streamW - viewportW) / 2.0;
     final double offsetY = (streamH - viewportH) / 2.0;
 
-    final double normLeft = ((frameRect.left + offsetX) / streamW).clamp(0.0, 1.0);
-    final double normTop = ((frameRect.top + offsetY) / streamH).clamp(0.0, 1.0);
-    final double normRight = ((frameRect.right + offsetX) / streamW).clamp(0.0, 1.0);
-    final double normBottom = ((frameRect.bottom + offsetY) / streamH).clamp(0.0, 1.0);
+    final double normLeft = streamW > 0 ? ((frameRect.left + offsetX) / streamW).clamp(0.0, 1.0) : 0.0;
+    final double normTop = streamH > 0 ? ((frameRect.top + offsetY) / streamH).clamp(0.0, 1.0) : 0.0;
+    final double normRight = streamW > 0 ? ((frameRect.right + offsetX) / streamW).clamp(0.0, 1.0) : 1.0;
+    final double normBottom = streamH > 0 ? ((frameRect.bottom + offsetY) / streamH).clamp(0.0, 1.0) : 1.0;
 
-    final double normW = (normRight - normLeft).clamp(0.10, 1.0);
-    final double normH = (normBottom - normTop).clamp(0.10, 1.0);
+    final double actualLeft = (normLeft * imgW).clamp(0.0, math.max(0.0, imgW - 10.0));
+    final double actualTop = (normTop * imgH).clamp(0.0, math.max(0.0, imgH - 10.0));
+    final double actualRight = (normRight * imgW).clamp(actualLeft + 10.0, imgW);
+    final double actualBottom = (normBottom * imgH).clamp(actualTop + 10.0, imgH);
 
-    final Rect srcRect = Rect.fromLTWH(
-      normLeft * imgW,
-      normTop * imgH,
-      normW * imgW,
-      normH * imgH,
-    );
+    final Rect srcRect = Rect.fromLTRB(actualLeft, actualTop, actualRight, actualBottom);
 
     final int targetW = srcRect.width.round().clamp(100, 2400);
     final int targetH = srcRect.height.round().clamp(100, 2400);
@@ -1430,23 +1472,24 @@ class _LiveFaceCameraDialogState extends State<_LiveFaceCameraDialog> {
                     final double viewportH = constraints.maxHeight;
 
                     // Calculate stream scaling to fill viewport with BoxFit.cover without distortion
-                    final double rawAspect = _controller?.value.aspectRatio ?? (4 / 3);
+                    final double rawAspect = (_controller != null && _controller!.value.isInitialized && _controller!.value.aspectRatio > 0)
+                        ? _controller!.value.aspectRatio
+                        : (4.0 / 3.0);
                     final bool isLandscapeSensor = rawAspect > 1.0;
                     final double streamVisualAspect = isLandscapeSensor ? (1.0 / rawAspect) : rawAspect;
 
-                    final double containerAspect = viewportW / (viewportH > 0 ? viewportH : 1.0);
-                    final double scale = containerAspect > streamVisualAspect
-                        ? (containerAspect / streamVisualAspect)
-                        : (streamVisualAspect / containerAspect);
+                    final double containerAspect = viewportH > 0 ? (viewportW / viewportH) : 1.0;
+                    final double calculatedScale = (containerAspect > 0 && streamVisualAspect > 0)
+                        ? (containerAspect > streamVisualAspect
+                            ? (containerAspect / streamVisualAspect)
+                            : (streamVisualAspect / containerAspect))
+                        : 1.0;
+                    final double scale = (calculatedScale.isFinite && !calculatedScale.isNaN && calculatedScale > 0)
+                        ? calculatedScale
+                        : 1.0;
 
                     // Responsive portrait biometric face frame dimensions
-                    final double frameW = (viewportW * 0.82).clamp(240.0, 420.0);
-                    final double frameH = (frameW * 1.25).clamp(280.0, viewportH * 0.74);
-                    final Rect frameRect = Rect.fromCenter(
-                      center: Offset(viewportW / 2, viewportH * 0.46),
-                      width: frameW,
-                      height: frameH,
-                    );
+                    final Rect frameRect = _calculateResponsiveFaceFrame(viewportW, viewportH);
 
                     // Update references for capture mapping
                     _currentFrameRect = frameRect;
@@ -1457,7 +1500,7 @@ class _LiveFaceCameraDialogState extends State<_LiveFaceCameraDialog> {
                       fit: StackFit.expand,
                       children: [
                         // 1. Live Camera Stream - Scaled seamlessly to fill camera area without letterbox
-                        if (_isInit && _controller != null)
+                        if (_isInit && _controller != null && _controller!.value.isInitialized)
                           ClipRect(
                             child: Transform.scale(
                               scale: scale,
@@ -1848,17 +1891,17 @@ class _FaceRectangularGuidePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // If explicit frameRect passed, use it; otherwise compute responsive fallback
-    final Rect rect = frameRect != Rect.zero
-        ? frameRect
-        : Rect.fromCenter(
-            center: Offset(size.width / 2, size.height * 0.46),
-            width: (size.width * 0.82).clamp(240.0, 420.0),
-            height: ((size.width * 0.82) * 1.25).clamp(280.0, size.height * 0.74),
-          );
+    if (size.width <= 0 || size.height <= 0) return;
 
-    const cornerRadius = 16.0;
-    final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(cornerRadius));
+    // If explicit frameRect passed, use it; otherwise compute responsive fallback
+    final Rect rect = (frameRect != Rect.zero && frameRect.width > 0 && frameRect.height > 0)
+        ? frameRect
+        : _calculateResponsiveFaceFrame(size.width, size.height);
+
+    if (rect.width <= 0 || rect.height <= 0) return;
+
+    final cornerRadius = math.min(16.0, math.min(rect.width, rect.height) * 0.15);
+    final rrect = RRect.fromRectAndRadius(rect, Radius.circular(cornerRadius));
 
     // 1. Dark translucent background overlay outside the capture rectangle
     final backgroundPath = Path()
@@ -1888,7 +1931,8 @@ class _FaceRectangularGuidePainter extends CustomPainter {
     canvas.drawRRect(rrect, borderPaint);
 
     // 4. Four prominent L-shaped biometric corner indicators
-    final cornerLen = (rect.width * 0.12).clamp(26.0, 36.0);
+    final maxCornerLen = math.min(rect.width, rect.height) * 0.35;
+    final cornerLen = math.max(cornerRadius + 4.0, math.min(maxCornerLen, rect.width * 0.12));
     final cornersPath = Path();
 
     // Top-Left Corner
@@ -1896,7 +1940,7 @@ class _FaceRectangularGuidePainter extends CustomPainter {
     cornersPath.lineTo(rect.left, rect.top + cornerRadius);
     cornersPath.arcToPoint(
       Offset(rect.left + cornerRadius, rect.top),
-      radius: const Radius.circular(cornerRadius),
+      radius: Radius.circular(cornerRadius),
     );
     cornersPath.lineTo(rect.left + cornerLen, rect.top);
 
@@ -1905,16 +1949,16 @@ class _FaceRectangularGuidePainter extends CustomPainter {
     cornersPath.lineTo(rect.right - cornerRadius, rect.top);
     cornersPath.arcToPoint(
       Offset(rect.right, rect.top + cornerRadius),
-      radius: const Radius.circular(cornerRadius),
+      radius: Radius.circular(cornerRadius),
     );
-    cornersPath.lineTo(rect.right, rect.top + cornerLen);
+    cornersPath.lineTo(rect.right + cornerLen, rect.top);
 
     // Bottom-Right Corner
     cornersPath.moveTo(rect.right, rect.bottom - cornerLen);
-    cornersPath.lineTo(rect.right, rect.bottom - cornerRadius);
+    cornersPath.lineTo(rect.right - cornerRadius, rect.bottom);
     cornersPath.arcToPoint(
       Offset(rect.right - cornerRadius, rect.bottom),
-      radius: const Radius.circular(cornerRadius),
+      radius: Radius.circular(cornerRadius),
     );
     cornersPath.lineTo(rect.right - cornerLen, rect.bottom);
 
@@ -1923,9 +1967,9 @@ class _FaceRectangularGuidePainter extends CustomPainter {
     cornersPath.lineTo(rect.left + cornerRadius, rect.bottom);
     cornersPath.arcToPoint(
       Offset(rect.left, rect.bottom - cornerRadius),
-      radius: const Radius.circular(cornerRadius),
+      radius: Radius.circular(cornerRadius),
     );
-    cornersPath.lineTo(rect.left, rect.bottom - cornerLen);
+    cornersPath.lineTo(rect.left - cornerLen, rect.bottom);
 
     // Subtle glow on corner indicators
     final cornerGlowPaint = Paint()
@@ -1951,4 +1995,3 @@ class _FaceRectangularGuidePainter extends CustomPainter {
   bool shouldRepaint(covariant _FaceRectangularGuidePainter oldDelegate) =>
       oldDelegate.frameRect != frameRect;
 }
-

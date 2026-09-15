@@ -1,3 +1,4 @@
+import 'dart:ui' as ui;
 import 'package:dio/dio.dart';
 import '../../../core/network/api_exceptions.dart';
 import 'package:flutter/foundation.dart';
@@ -1129,6 +1130,9 @@ class _LiveFaceCameraDialogState extends State<_LiveFaceCameraDialog> {
   bool _isFlashOn = false;
   String? _error;
 
+  Rect _currentFrameRect = Rect.zero;
+  Size _currentViewportSize = Size.zero;
+
   @override
   void initState() {
     super.initState();
@@ -1230,8 +1234,45 @@ class _LiveFaceCameraDialogState extends State<_LiveFaceCameraDialog> {
 
     try {
       final file = await ctrl.takePicture();
+      final rawBytes = await file.readAsBytes();
+
+      final currentCamera = widget.availableCameras.isNotEmpty
+          ? widget.availableCameras[_selectedCameraIndex % widget.availableCameras.length]
+          : null;
+      final isFrontCamera = currentCamera?.lensDirection == CameraLensDirection.front;
+
+      // Crop image strictly to the visible green capture frame
+      Uint8List finalBytes = rawBytes;
+      try {
+        final double vpW = _currentViewportSize.width > 0 ? _currentViewportSize.width : 390.0;
+        final double vpH = _currentViewportSize.height > 0 ? _currentViewportSize.height : 580.0;
+        final Rect frame = _currentFrameRect != Rect.zero
+            ? _currentFrameRect
+            : Rect.fromCenter(
+                center: Offset(vpW / 2, vpH * 0.46),
+                width: (vpW * 0.82).clamp(240.0, 420.0),
+                height: ((vpW * 0.82) * 1.25).clamp(280.0, vpH * 0.74),
+              );
+
+        finalBytes = await _cropImageToFrame(
+          rawBytes: rawBytes,
+          frameRect: frame,
+          viewportW: vpW,
+          viewportH: vpH,
+          cameraAspect: ctrl.value.aspectRatio,
+          isFrontCamera: isFrontCamera,
+        );
+      } catch (cropErr) {
+        debugPrint('Face frame crop warning (using raw capture): $cropErr');
+      }
+
       if (!mounted) return;
-      Navigator.of(context).pop(file);
+      final processedFile = XFile.fromData(
+        finalBytes,
+        name: 'live_face_capture.jpg',
+        mimeType: 'image/jpeg',
+      );
+      Navigator.of(context).pop(processedFile);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -1244,6 +1285,76 @@ class _LiveFaceCameraDialogState extends State<_LiveFaceCameraDialog> {
         ),
       );
     }
+  }
+
+  /// High-Performance Exact Screen-to-Image Crop Pipeline
+  Future<Uint8List> _cropImageToFrame({
+    required Uint8List rawBytes,
+    required Rect frameRect,
+    required double viewportW,
+    required double viewportH,
+    required double cameraAspect,
+    required bool isFrontCamera,
+  }) async {
+    final codec = await ui.instantiateImageCodec(rawBytes);
+    final frameInfo = await codec.getNextFrame();
+    final ui.Image image = frameInfo.image;
+
+    final double imgW = image.width.toDouble();
+    final double imgH = image.height.toDouble();
+
+    final bool sensorIsLandscape = cameraAspect > 1.0;
+    final double streamVisualAspect = sensorIsLandscape ? (1.0 / cameraAspect) : cameraAspect;
+
+    final double containerAspect = viewportW / viewportH;
+    final double streamW = containerAspect > streamVisualAspect
+        ? viewportW
+        : (viewportH * streamVisualAspect);
+    final double streamH = containerAspect > streamVisualAspect
+        ? (viewportW / streamVisualAspect)
+        : viewportH;
+
+    final double offsetX = (streamW - viewportW) / 2.0;
+    final double offsetY = (streamH - viewportH) / 2.0;
+
+    final double normLeft = ((frameRect.left + offsetX) / streamW).clamp(0.0, 1.0);
+    final double normTop = ((frameRect.top + offsetY) / streamH).clamp(0.0, 1.0);
+    final double normRight = ((frameRect.right + offsetX) / streamW).clamp(0.0, 1.0);
+    final double normBottom = ((frameRect.bottom + offsetY) / streamH).clamp(0.0, 1.0);
+
+    final double normW = (normRight - normLeft).clamp(0.10, 1.0);
+    final double normH = (normBottom - normTop).clamp(0.10, 1.0);
+
+    final Rect srcRect = Rect.fromLTWH(
+      normLeft * imgW,
+      normTop * imgH,
+      normW * imgW,
+      normH * imgH,
+    );
+
+    final int targetW = srcRect.width.round().clamp(100, 2400);
+    final int targetH = srcRect.height.round().clamp(100, 2400);
+
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    final dstRect = Rect.fromLTWH(0, 0, targetW.toDouble(), targetH.toDouble());
+
+    canvas.drawImageRect(
+      image,
+      srcRect,
+      dstRect,
+      Paint()..filterQuality = FilterQuality.high,
+    );
+
+    final picture = recorder.endRecording();
+    final croppedUiImage = await picture.toImage(targetW, targetH);
+    final byteData = await croppedUiImage.toByteData(format: ui.ImageByteFormat.png);
+
+    if (byteData == null) {
+      return rawBytes;
+    }
+
+    return byteData.buffer.asUint8List();
   }
 
   @override
@@ -1264,118 +1375,154 @@ class _LiveFaceCameraDialogState extends State<_LiveFaceCameraDialog> {
             // 2. Security Banner
             _buildSecurityBanner(),
 
-            // 3. Camera Viewport with Oval Framing & Guides
+            // 3. Maximized Camera Viewport with Exact Responsive Framing & Guides
             Expanded(
-              child: Stack(
-                alignment: Alignment.center,
-                fit: StackFit.expand,
-                children: [
-                  // Live Camera Stream or Error/Loading State
-                  if (_isInit && _controller != null)
-                    Center(
-                      child: AspectRatio(
-                        aspectRatio: _controller!.value.aspectRatio,
-                        child: CameraPreview(_controller!),
-                      ),
-                    )
-                  else if (_error != null)
-                    Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.error_outline_rounded, color: Color(0xFFEF4444), size: 44),
-                            const SizedBox(height: 12),
-                            Text(
-                              _error!,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(color: Colors.white70, fontSize: 13),
-                            ),
-                            const SizedBox(height: 16),
-                            ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF22C55E),
-                                foregroundColor: Colors.white,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final double viewportW = constraints.maxWidth;
+                  final double viewportH = constraints.maxHeight;
+
+                  // Calculate stream scaling to fill viewport with BoxFit.cover without distortion
+                  final double rawAspect = _controller?.value.aspectRatio ?? (4 / 3);
+                  final bool isLandscapeSensor = rawAspect > 1.0;
+                  final double streamVisualAspect = isLandscapeSensor ? (1.0 / rawAspect) : rawAspect;
+
+                  final double containerAspect = viewportW / (viewportH > 0 ? viewportH : 1.0);
+                  final double scale = containerAspect > streamVisualAspect
+                      ? (containerAspect / streamVisualAspect)
+                      : (streamVisualAspect / containerAspect);
+
+                  // Responsive portrait biometric face frame dimensions
+                  final double frameW = (viewportW * 0.82).clamp(240.0, 420.0);
+                  final double frameH = (frameW * 1.25).clamp(280.0, viewportH * 0.74);
+                  final Rect frameRect = Rect.fromCenter(
+                    center: Offset(viewportW / 2, viewportH * 0.46),
+                    width: frameW,
+                    height: frameH,
+                  );
+
+                  // Update references for capture mapping
+                  _currentFrameRect = frameRect;
+                  _currentViewportSize = Size(viewportW, viewportH);
+
+                  return Stack(
+                    alignment: Alignment.center,
+                    fit: StackFit.expand,
+                    children: [
+                      // 1. Live Camera Stream - Scaled seamlessly to fill camera area without letterbox
+                      if (_isInit && _controller != null)
+                        ClipRect(
+                          child: Transform.scale(
+                            scale: scale,
+                            alignment: Alignment.center,
+                            child: Center(
+                              child: AspectRatio(
+                                aspectRatio: isLandscapeSensor ? (1.0 / rawAspect) : rawAspect,
+                                child: CameraPreview(_controller!),
                               ),
-                              onPressed: _initCamera,
-                              child: const Text('Retry Camera'),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                  else
-                    const Center(
-                      child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF22C55E)),
-                      ),
-                    ),
-
-                  // Professional Rectangular Face Framing Guide Custom Painter
-                  CustomPaint(
-                    painter: _FaceRectangularGuidePainter(),
-                  ),
-
-                  // Guidance Chip at Top of Camera Area
-                  Positioned(
-                    top: 16,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.65),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Colors.white24, width: 1.0),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Color(0xFF22C55E),
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          const Text(
-                            'ALIGN FACE INSIDE FRAME',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12.0,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.5,
+                        )
+                      else if (_error != null)
+                        Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.error_outline_rounded, color: Color(0xFFEF4444), size: 44),
+                                const SizedBox(height: 12),
+                                Text(
+                                  _error!,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                                ),
+                                const SizedBox(height: 16),
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF22C55E),
+                                    foregroundColor: Colors.white,
+                                  ),
+                                  onPressed: _initCamera,
+                                  child: const Text('Retry Camera'),
+                                ),
+                              ],
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  // Lens Direction Indicator Badge
-                  if (_isInit && currentCamera != null)
-                    Positioned(
-                      bottom: 12,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF1E293B).withValues(alpha: 0.85),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFF334155), width: 1.0),
+                        )
+                      else
+                        const Center(
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF22C55E)),
+                          ),
                         ),
-                        child: Text(
-                          isFrontCamera ? 'FRONT CAMERA (SELFIE)' : 'BACK CAMERA (REAR)',
-                          style: const TextStyle(
-                            color: Color(0xFF94A3B8),
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.5,
+
+                      // 2. Professional Rectangular Face Framing Guide Custom Painter
+                      CustomPaint(
+                        painter: _FaceRectangularGuidePainter(frameRect: frameRect),
+                      ),
+
+                      // 3. Guidance Chip at Top of Camera Area
+                      Positioned(
+                        top: 16,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.65),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: Colors.white24, width: 1.0),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Color(0xFF22C55E),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'ALIGN FACE INSIDE FRAME',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12.0,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
-                    ),
-                ],
+
+                      // 4. Lens Direction Indicator Badge
+                      if (_isInit && currentCamera != null)
+                        Positioned(
+                          bottom: 12,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1E293B).withValues(alpha: 0.85),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: const Color(0xFF334155), width: 1.0),
+                            ),
+                            child: Text(
+                              isFrontCamera ? 'FRONT CAMERA (SELFIE)' : 'BACK CAMERA (REAR)',
+                              style: const TextStyle(
+                                color: Color(0xFF94A3B8),
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                },
               ),
             ),
 
@@ -1643,22 +1790,25 @@ class _LiveFaceCameraDialogState extends State<_LiveFaceCameraDialog> {
 
 // CustomPainter for Professional Biometric Face Rectangular Guide Frame
 class _FaceRectangularGuidePainter extends CustomPainter {
+  final Rect frameRect;
+
+  const _FaceRectangularGuidePainter({this.frameRect = Rect.zero});
+
   @override
   void paint(Canvas canvas, Size size) {
-    // 1. Responsive rectangular dimensions (84–90% width, 60–68% height)
-    final frameWidth = (size.width * 0.88).clamp(240.0, 480.0);
-    final frameHeight = (size.height * 0.64).clamp(280.0, 560.0);
-    final center = Offset(size.width / 2, size.height * 0.47);
+    // If explicit frameRect passed, use it; otherwise compute responsive fallback
+    final Rect rect = frameRect != Rect.zero
+        ? frameRect
+        : Rect.fromCenter(
+            center: Offset(size.width / 2, size.height * 0.46),
+            width: (size.width * 0.82).clamp(240.0, 420.0),
+            height: ((size.width * 0.82) * 1.25).clamp(280.0, size.height * 0.74),
+          );
 
-    final frameRect = Rect.fromCenter(
-      center: center,
-      width: frameWidth,
-      height: frameHeight,
-    );
     const cornerRadius = 16.0;
-    final rrect = RRect.fromRectAndRadius(frameRect, const Radius.circular(cornerRadius));
+    final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(cornerRadius));
 
-    // 2. Dark translucent background overlay outside the capture rectangle
+    // 1. Dark translucent background overlay outside the capture rectangle
     final backgroundPath = Path()
       ..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
     final rrectPath = Path()..addRRect(rrect);
@@ -1666,11 +1816,11 @@ class _FaceRectangularGuidePainter extends CustomPainter {
         Path.combine(PathOperation.difference, backgroundPath, rrectPath);
 
     final overlayPaint = Paint()
-      ..color = Colors.black.withValues(alpha: 0.52)
+      ..color = Colors.black.withValues(alpha: 0.50)
       ..style = PaintingStyle.fill;
     canvas.drawPath(overlayPath, overlayPaint);
 
-    // 3. Subtle outer glow for rectangle
+    // 2. Subtle outer glow for rectangle
     final glowPaint = Paint()
       ..color = const Color(0xFF22C55E).withValues(alpha: 0.20)
       ..style = PaintingStyle.stroke
@@ -1678,52 +1828,52 @@ class _FaceRectangularGuidePainter extends CustomPainter {
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.0);
     canvas.drawRRect(rrect, glowPaint);
 
-    // 4. Clean thin green rectangular border
+    // 3. Clean thin green rectangular border
     final borderPaint = Paint()
       ..color = const Color(0xFF22C55E).withValues(alpha: 0.45)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.2;
     canvas.drawRRect(rrect, borderPaint);
 
-    // 5. Four prominent L-shaped biometric corner indicators
-    final cornerLen = (frameWidth * 0.12).clamp(26.0, 36.0);
+    // 4. Four prominent L-shaped biometric corner indicators
+    final cornerLen = (rect.width * 0.12).clamp(26.0, 36.0);
     final cornersPath = Path();
 
     // Top-Left Corner
-    cornersPath.moveTo(frameRect.left, frameRect.top + cornerLen);
-    cornersPath.lineTo(frameRect.left, frameRect.top + cornerRadius);
+    cornersPath.moveTo(rect.left, rect.top + cornerLen);
+    cornersPath.lineTo(rect.left, rect.top + cornerRadius);
     cornersPath.arcToPoint(
-      Offset(frameRect.left + cornerRadius, frameRect.top),
+      Offset(rect.left + cornerRadius, rect.top),
       radius: const Radius.circular(cornerRadius),
     );
-    cornersPath.lineTo(frameRect.left + cornerLen, frameRect.top);
+    cornersPath.lineTo(rect.left + cornerLen, rect.top);
 
     // Top-Right Corner
-    cornersPath.moveTo(frameRect.right - cornerLen, frameRect.top);
-    cornersPath.lineTo(frameRect.right - cornerRadius, frameRect.top);
+    cornersPath.moveTo(rect.right - cornerLen, rect.top);
+    cornersPath.lineTo(rect.right - cornerRadius, rect.top);
     cornersPath.arcToPoint(
-      Offset(frameRect.right, frameRect.top + cornerRadius),
+      Offset(rect.right, rect.top + cornerRadius),
       radius: const Radius.circular(cornerRadius),
     );
-    cornersPath.lineTo(frameRect.right, frameRect.top + cornerLen);
+    cornersPath.lineTo(rect.right, rect.top + cornerLen);
 
     // Bottom-Right Corner
-    cornersPath.moveTo(frameRect.right, frameRect.bottom - cornerLen);
-    cornersPath.lineTo(frameRect.right, frameRect.bottom - cornerRadius);
+    cornersPath.moveTo(rect.right, rect.bottom - cornerLen);
+    cornersPath.lineTo(rect.right, rect.bottom - cornerRadius);
     cornersPath.arcToPoint(
-      Offset(frameRect.right - cornerRadius, frameRect.bottom),
+      Offset(rect.right - cornerRadius, rect.bottom),
       radius: const Radius.circular(cornerRadius),
     );
-    cornersPath.lineTo(frameRect.right - cornerLen, frameRect.bottom);
+    cornersPath.lineTo(rect.right - cornerLen, rect.bottom);
 
     // Bottom-Left Corner
-    cornersPath.moveTo(frameRect.left + cornerLen, frameRect.bottom);
-    cornersPath.lineTo(frameRect.left + cornerRadius, frameRect.bottom);
+    cornersPath.moveTo(rect.left + cornerLen, rect.bottom);
+    cornersPath.lineTo(rect.left + cornerRadius, rect.bottom);
     cornersPath.arcToPoint(
-      Offset(frameRect.left, frameRect.bottom - cornerRadius),
+      Offset(rect.left, rect.bottom - cornerRadius),
       radius: const Radius.circular(cornerRadius),
     );
-    cornersPath.lineTo(frameRect.left, frameRect.bottom - cornerLen);
+    cornersPath.lineTo(rect.left, rect.bottom - cornerLen);
 
     // Subtle glow on corner indicators
     final cornerGlowPaint = Paint()
@@ -1746,6 +1896,7 @@ class _FaceRectangularGuidePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _FaceRectangularGuidePainter oldDelegate) =>
+      oldDelegate.frameRect != frameRect;
 }
 
